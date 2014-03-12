@@ -88,7 +88,7 @@ Library users will need to implement the URL endpoints. For example, express end
       response.location login_url
       response.send 302, "Redirecting..."
 
-  app.post /assert", (request, response) ->
+  app.post "/assert", (request, response) ->
     sp.assert idp, response.body, (err, user) ->
       response.send 500, err if err?
       response.send 200, "Hello #{user.email}!"
