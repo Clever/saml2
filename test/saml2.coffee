@@ -1,7 +1,9 @@
 _             = require 'underscore'
 # util = require 'util'
-saml2      = require '../lib/saml2'
-assert = require 'assert'
+saml2         = require '../lib/saml2'
+assert        = require 'assert'
+async         = require 'async'
+url           = require 'url'
 
 describe 'saml2', ->
 
@@ -85,9 +87,6 @@ describe 'saml2', ->
       done()
 
   describe 'ServiceProvider', ->
-    # before each
-    idp = new saml2.IdentityProvider 'login_url', 'logout_url', 'other_service_cert'
-
     it 'can be constructed', (done) ->
       sp = new saml2.ServiceProvider 'private_key', 'cert'
       done()
@@ -98,10 +97,26 @@ describe 'saml2', ->
 
     it 'can create login url', (done) ->
       sp = new saml2.ServiceProvider 'private_key', 'cert'
-      sp.create_login_url(idp, done)
+      idp = new saml2.IdentityProvider 'login_url', 'logout_url', 'other_service_cert'
 
-    _.each {'error1':'response1', 'error2':'response2'}, (response_text, error_type) ->
+      async.waterfall [
+        (cb_wf) => sp.create_login_url idp, cb_wf
+      ], (err, login_url) ->
+        assert not err?, "Error creating login URL: #{err}"
+        parsed_url = url.parse login_url, true
+        console.log parsed_url
+        saml_request = parsed_url.query?.SAMLRequest?
+        assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        done()
+
+    login_url_errors =
+      'assert URL not given':'response1'
+      'not HTTPS':'response2'
+
+    _.each login_url_errors, (response_text, error_type) ->
       xit "returns correct 'login_url' error for #{error_type} ", (done) ->
+        sp = new saml2.ServiceProvider 'private_key', 'cert'
+        idp = new saml2.IdentityProvider 'login_url', 'logout_url', 'other_service_cert'
         assert false
         done()
 
@@ -109,8 +124,10 @@ describe 'saml2', ->
       assert false
       done()
 
-    _.each {'error1':'response1', 'error2':'response2'}, (response_text, error_type) ->
+    assert_errors =
+      'error1' : 'response1'
+
+    _.each assert_errors, (response_text, error_type) ->
       xit "returns correct 'assert' error for #{error_type} ", (done) ->
         assert false
         done()
-
