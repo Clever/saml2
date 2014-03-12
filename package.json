@@ -34,6 +34,10 @@
     "coffee-script": "~1.7.1"
   },
   "dependencies": {
-
+    "underscore": "~1.6.0",
+    "xml2js": "~0.4.1",
+    "xmlbuilder": "~2.1.0",
+    "xmldom": "~0.1.19",
+    "xml-encryption": "~0.4.0"
   }
 }
