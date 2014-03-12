@@ -2,5 +2,12 @@
   "name": "saml2",
   "version": "0.0.0",
   "description": "SAML 2.0 node helpers",
-  "author": "Clever"
+  "author": "Clever",
+  "devDependencies": {
+    "mocha": "~1.17.1",
+    "coffee-script": "~1.7.1"
+  },
+  "dependencies": {
+
+  }
 }
