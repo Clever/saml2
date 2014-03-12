@@ -1,0 +1,6 @@
+{
+  "name": "saml2",
+  "version": "0.0.0",
+  "description": "SAML 2.0 node helpers",
+  "author": "Clever"
+}
