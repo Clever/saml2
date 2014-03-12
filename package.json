@@ -3,6 +3,26 @@
   "version": "0.0.0",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "make -Br test",
+    "test-cov": "make -Br test-cov",
+    "prepublish": "make build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Clever/saml2.git"
+  },
+  "keywords": [
+    "saml",
+    "node"
+  ],
+  "bugs": {
+    "url": "https://github.com/Clever/saml2/issues"
+  },
   "devDependencies": {
     "mocha": "~1.17.1",
     "coffee-script": "~1.7.1"
