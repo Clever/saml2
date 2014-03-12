@@ -1,3 +1,5 @@
+.PHONY: test
+
 test-cov:
 	rm -rf lib-js lib-js-cov
 	coffee -c -o lib-js lib
