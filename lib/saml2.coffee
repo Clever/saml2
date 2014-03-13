@@ -1,5 +1,6 @@
 _             = require 'underscore'
 {parseString} = require 'xml2js'
+util          = require 'util'
 xmlbuilder    = require 'xmlbuilder'
 xmlcrypto     = require 'xml-crypto'
 xmldom        = require 'xmldom'
@@ -50,6 +51,47 @@ decrypt_assertion = (dom, private_key, cb) ->
   encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
   xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
 
+parse_assertion_attributes = (dom, cb) ->
+  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')[0]
+  attribute_statement = assertion.getElementsByTagName('AttributeStatement')[0]
+  assertion_attributes = {}
+  for attribute in attribute_statement.childNodes
+    for attr in attribute.attributes
+      if attr.name is 'Name'
+        attribute_name = attr.value
+    return cb new Error("Invalid attribute without name") unless attribute_name?
+    assertion_attributes[attribute_name] = _(attribute.childNodes).map (attribute_value) -> attribute_value.childNodes[0].data
+  cb null, assertion_attributes
+
+pretty_assertion_attributes = (assertion_attributes) ->
+  claim_map =
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname": "given_name"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": "name"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn": "upn"
+    "http://schemas.xmlsoap.org/claims/CommonName": "common_name"
+    "http://schemas.xmlsoap.org/claims/Group": "group"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": "role"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname": "surname"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier": "ppid"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": "name_id"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/authenticationmethod": "authentication_method"
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/denyonlysid": "deny_only_group_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/denyonlyprimarysid": "deny_only_primary_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/denyonlyprimarygroupsid": "deny_only_primary_group_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/groupsid": "group_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/primarygroupsid": "primary_group_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid": "primary_sid"
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname": "windows_account_name"
+
+  _(assertion_attributes)
+    .chain()
+    .pairs()
+    .filter ([k, v]) -> (claim_map[k]? and v.length > 0)
+    .map ([k, v]) -> [claim_map[k], v[0]]
+    .object()
+    .value()
+
 module.exports.ServiceProvider =
   class ServiceProvider
     constructor: (@issuer, @private_key, @certificate) ->
@@ -70,18 +112,8 @@ module.exports.ServiceProvider =
         return cb err if err?
         return cb new Error("Invalid signature!") unless check_saml_signature decrypted_result, "adfs.crt"
 
-        parseString decrypted_result, (err, result) ->
-          return cb err if err?
-
-          user = {}
-          if result['Assertion']?['AttributeStatement']?
-            user.attributes =
-              _.chain(result['Assertion']['AttributeStatement'][0]['Attribute'])
-              .map (attr) -> [attr['$']['Name'], attr['AttributeValue']]
-              .object()
-              .value()
-
-          cb null, user
+        parse_assertion_attributes (new xmldom.DOMParser()).parseFromString(decrypted_result), (err, result) ->
+          cb null, util.inspect pretty_assertion_attributes result
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
