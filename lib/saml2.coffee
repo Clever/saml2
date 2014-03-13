@@ -1,4 +1,5 @@
 _             = require 'underscore'
+async         = require 'async'
 {parseString} = require 'xml2js'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder'
@@ -29,22 +30,23 @@ create_authn_request = (issuer, destination) ->
 # cert. This is NOT sufficient for signature checks as it doesn't verify the
 # signature is signing the important content, nor is it preventing the parsing
 # of unsigned content.
-check_saml_signature = (xml, cert_file) ->
+check_saml_signature = (xml, cert_file, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0]
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = new xmlcrypto.FileKeyInfo(cert_file)
   sig.loadSignature(signature.toString())
-  sig.checkSignature(xml)
+  return cb null if sig.checkSignature(xml)
+  cb new Error("SAML Assertion signature check failed!")
 
-check_status_success = (dom) ->
+check_status_success = (dom, cb) ->
   status = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Status')
-  return false unless status.length is 1
+  return cb new Error("No SAML status found!") unless status.length is 1
   for status_code in status[0].childNodes
     for attr in status_code.attributes
-      return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
-  return false
+      return cb null if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+  return cb new Error("SAML status wasn't success!")
 
 decrypt_assertion = (dom, private_key, cb) ->
   encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
@@ -106,14 +108,17 @@ module.exports.ServiceProvider =
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
       saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
+      decrypted_assertion = null
 
-      return cb new Error("SAMLResponse not successful!") unless check_status_success saml_response
-      decrypt_assertion saml_response, @private_key, (err, decrypted_result) ->
-        return cb err if err?
-        return cb new Error("Invalid signature!") unless check_saml_signature decrypted_result, "adfs.crt"
-
-        parse_assertion_attributes (new xmldom.DOMParser()).parseFromString(decrypted_result), (err, result) ->
-          cb null, util.inspect pretty_assertion_attributes result
+      async.waterfall [
+        (cb_wf) -> check_status_success saml_response, cb_wf
+        (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
+        (result, cb_wf) ->
+          decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
+          check_saml_signature decrypted_result, "adfs.crt", cb_wf
+        (cb_wf) -> parse_assertion_attributes (new xmldom.DOMParser()).parseFromString(decrypted_result), cb_wf
+        (assertion_attributes, cb_wf) -> cb_wf null, pretty_assertion_attributes assertion_attributes
+      ], cb
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
