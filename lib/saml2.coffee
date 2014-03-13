@@ -7,7 +7,7 @@ xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 
 
-create_authn_request = ->
+create_authn_request = (issuer, destination) ->
   xmlbuilder.create
     AuthnRequest:
       '@xmlns': 'urn:oasis:names:tc:SAML:2.0:protocol'
@@ -15,7 +15,7 @@ create_authn_request = ->
       '@Version': '2.0'
       '@ID': '_e23de96fdd91332b229368086adb655139e24ac6e2'
       '@IssueInstant': (new Date()).toISOString()
-      #'@Destination': ''
+      '@Destination': destination
       '@AssertionConsumerServiceURL': 'https://saml.not.clever.com/assert'
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
       'saml:Issuer': "https://saml.not.clever.com/metadata.xml"
@@ -37,40 +37,50 @@ check_saml_signature = (xml, cert_file) ->
   sig.loadSignature(signature.toString())
   sig.checkSignature(xml)
 
+check_status_success = (dom) ->
+  status = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Status')
+  return false unless status.length is 1
+  for status_code in status[0].childNodes
+    for attr in status_code.attributes
+      return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+  return false
+
+decrypt_assertion = (dom, private_key, cb) ->
+  encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
+  encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
+  xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
+
 module.exports.ServiceProvider =
   class ServiceProvider
-    constructor: (@private_key, @certificate) ->
+    constructor: (@issuer, @private_key, @certificate) ->
 
     # -- Required
     # Returns a redirect URL, at which a user can login
     create_login_url: (identity_provider, cb) =>
-      zlib.deflateRaw create_authn_request(), (err, deflated) =>
+      zlib.deflateRaw create_authn_request(@issuer, identity_provider.sso_login_url), (err, deflated) ->
         cb err if err?
         cb null, "#{identity_provider.sso_login_url}?SAMLRequest=" + encodeURIComponent(deflated.toString('base64'))
-        #loc = 'https://cleverad.ops.clever.com/adfs/ls/?SAMLRequest=' + encodeURIComponent(deflated.toString('base64')) + "&RelayState=https%3A%2F%2Fsaml.not.clever.com%2Fassert"
 
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
-      # Base64 decode
-      buf = new Buffer request_body.SAMLResponse, 'base64'
-      # Decrypt
-      saml_response = (new xmldom.DOMParser()).parseFromString buf.toString()
-      encrypted_token = saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
-      encrypted_data = encrypted_token.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
+      saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
 
-      xmlenc.decrypt encrypted_data.toString(), (key: @private_key), (err, decrypted_result) ->
+      return cb new Error("SAMLResponse not successful!") unless check_status_success saml_response
+      decrypt_assertion saml_response, @private_key, (err, decrypted_result) ->
         return cb err if err?
-        return cb new Error("Error invalid signature!") unless check_saml_signature decrypted_result, "adfs.crt"
+        return cb new Error("Invalid signature!") unless check_saml_signature decrypted_result, "adfs.crt"
 
         parseString decrypted_result, (err, result) ->
           return cb err if err?
-          # Parse it good
+
+          user = {}
           if result['Assertion']?['AttributeStatement']?
-            return cb null,
+            user.attributes =
               _.chain(result['Assertion']['AttributeStatement'][0]['Attribute'])
               .map (attr) -> [attr['$']['Name'], attr['AttributeValue']]
               .object()
               .value()
+
           cb null, user
 
     # -- Optional
