@@ -115,8 +115,8 @@ module.exports.ServiceProvider =
         (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
         (result, cb_wf) ->
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-          check_saml_signature decrypted_result, "adfs.crt", cb_wf
-        (cb_wf) -> parse_assertion_attributes (new xmldom.DOMParser()).parseFromString(decrypted_result), cb_wf
+          check_saml_signature result, "adfs.crt", cb_wf
+        (cb_wf) -> parse_assertion_attributes decrypted_assertion, cb_wf
         (assertion_attributes, cb_wf) -> cb_wf null, pretty_assertion_attributes assertion_attributes
       ], cb
 
