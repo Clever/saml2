@@ -9,7 +9,7 @@ xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 
 
-create_authn_request = (issuer, destination) ->
+create_authn_request = (issuer, assert_endpoint, destination) ->
   xmlbuilder.create
     AuthnRequest:
       '@xmlns': 'urn:oasis:names:tc:SAML:2.0:protocol'
@@ -18,7 +18,7 @@ create_authn_request = (issuer, destination) ->
       '@ID': '_e23de96fdd91332b229368086adb655139e24ac6e2'
       '@IssueInstant': (new Date()).toISOString()
       '@Destination': destination
-      '@AssertionConsumerServiceURL': 'https://saml.not.clever.com/assert'
+      '@AssertionConsumerServiceURL': assert_endpoint
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
       'saml:Issuer': "https://saml.not.clever.com/metadata.xml"
       NameIDPolicy:
@@ -36,7 +36,7 @@ check_saml_signature = (xml, certificate, cb) ->
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0]
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> certificate
-  sig.loadSignature(signature.toString())
+  sig.loadSignature signature.toString()
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
 
@@ -100,8 +100,8 @@ module.exports.ServiceProvider =
 
     # -- Required
     # Returns a redirect URL, at which a user can login
-    create_login_url: (identity_provider, cb) =>
-      zlib.deflateRaw create_authn_request(@issuer, identity_provider.sso_login_url), (err, deflated) ->
+    create_login_url: (identity_provider, assert_endpoint, cb) =>
+      zlib.deflateRaw create_authn_request(@issuer, assert_endpoint, identity_provider.sso_login_url), (err, deflated) ->
         cb err if err?
         cb null, "#{identity_provider.sso_login_url}?SAMLRequest=" + encodeURIComponent(deflated.toString('base64'))
 
@@ -110,6 +110,8 @@ module.exports.ServiceProvider =
       saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
       decrypted_assertion = null
 
+      user = {}
+
       async.waterfall [
         (cb_wf) -> check_status_success saml_response, cb_wf
         (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
@@ -117,12 +119,14 @@ module.exports.ServiceProvider =
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
           check_saml_signature result, identity_provider.certificate, cb_wf
         (cb_wf) -> parse_assertion_attributes decrypted_assertion, cb_wf
-        (assertion_attributes, cb_wf) -> cb_wf null, pretty_assertion_attributes assertion_attributes
+        (assertion_attributes, cb_wf) ->
+          user = _.extend pretty_assertion_attributes(assertion_attributes), attributes: assertion_attributes
+          cb_wf null, user
       ], cb
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
-    create_logout_url: (identity_provider, cb) ->
+    create_logout_url: (user, identity_provider, cb) ->
       return
 
     # Returns XML metadata, used during initial SAML configuration
