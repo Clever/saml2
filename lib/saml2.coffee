@@ -53,6 +53,19 @@ decrypt_assertion = (dom, private_key, cb) ->
   encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
   xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
 
+parse_response_header = (dom, cb) ->
+  response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')[0]
+  response_header = {}
+  for attr in response.attributes
+    switch attr.name
+      when "Version"
+        return cb new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
+      when "Destination"
+        response_header.destination = attr.value
+      when "InResponseTo"
+        response_header.in_response_to = attr.value
+  cb null, response_header
+
 parse_assertion_attributes = (dom, cb) ->
   assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')[0]
   attribute_statement = assertion.getElementsByTagName('AttributeStatement')[0]
@@ -113,14 +126,18 @@ module.exports.ServiceProvider =
       user = {}
 
       async.waterfall [
-        (cb_wf) -> check_status_success saml_response, cb_wf
+        (cb_wf) -> parse_response_header saml_response, cb_wf
+        (response_header, cb_wf) ->
+          user = { response_header }
+          check_status_success saml_response, cb_wf
         (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
         (result, cb_wf) ->
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
           check_saml_signature result, identity_provider.certificate, cb_wf
         (cb_wf) -> parse_assertion_attributes decrypted_assertion, cb_wf
         (assertion_attributes, cb_wf) ->
-          user = _.extend pretty_assertion_attributes(assertion_attributes), attributes: assertion_attributes
+          user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+          user = _.extend user, attributes: assertion_attributes
           cb_wf null, user
       ], cb
 
