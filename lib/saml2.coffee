@@ -30,12 +30,12 @@ create_authn_request = (issuer, destination) ->
 # cert. This is NOT sufficient for signature checks as it doesn't verify the
 # signature is signing the important content, nor is it preventing the parsing
 # of unsigned content.
-check_saml_signature = (xml, cert_file, cb) ->
+check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0]
   sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = new xmlcrypto.FileKeyInfo(cert_file)
+  sig.keyInfoProvider = getKey: -> certificate
   sig.loadSignature(signature.toString())
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
@@ -115,7 +115,7 @@ module.exports.ServiceProvider =
         (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
         (result, cb_wf) ->
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-          check_saml_signature result, "adfs.crt", cb_wf
+          check_saml_signature result, identity_provider.certificate, cb_wf
         (cb_wf) -> parse_assertion_attributes decrypted_assertion, cb_wf
         (assertion_attributes, cb_wf) -> cb_wf null, pretty_assertion_attributes assertion_attributes
       ], cb

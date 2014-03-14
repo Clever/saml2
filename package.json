@@ -31,11 +31,10 @@
   },
   "devDependencies": {
     "mocha": "~1.17.1",
-    "coffee-script": "~1.7.1",
-    "underscore": "~1.6.0",
-    "async": "~0.2.10"
+    "coffee-script": "~1.7.1"
   },
   "dependencies": {
+    "underscore": "~1.6.0",
     "xml2js": "~0.4.1",
     "xmlbuilder": "~2.1.0",
     "xml-crypto": "0.0.22",
