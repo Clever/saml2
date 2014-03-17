@@ -100,7 +100,7 @@ describe 'saml2', ->
 
       async.waterfall [
         (cb_wf) => sp.create_login_url idp, 'assert_url', cb_wf
-      ], (err, login_url) ->
+      ], (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
         saml_request = parsed_url.query?.SAMLRequest?

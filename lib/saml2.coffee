@@ -1,5 +1,6 @@
 _             = require 'underscore'
 async         = require 'async'
+crypto        = require 'crypto'
 {parseString} = require 'xml2js'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder'
@@ -9,13 +10,14 @@ xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 
 
-create_authn_request = (issuer, assert_endpoint, destination) ->
-  xmlbuilder.create
+create_authn_request = (issuer, assert_endpoint, destination, cb) ->
+  id = '_' + crypto.randomBytes(21).toString('hex')
+  xml = xmlbuilder.create
     AuthnRequest:
       '@xmlns': 'urn:oasis:names:tc:SAML:2.0:protocol'
       '@xmlns:saml': 'urn:oasis:names:tc:SAML:2.0:assertion'
       '@Version': '2.0'
-      '@ID': '_e23de96fdd91332b229368086adb655139e24ac6e2'
+      '@ID': id
       '@IssueInstant': (new Date()).toISOString()
       '@Destination': destination
       '@AssertionConsumerServiceURL': assert_endpoint
@@ -24,7 +26,8 @@ create_authn_request = (issuer, assert_endpoint, destination) ->
       NameIDPolicy:
         '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
-  .end({pretty: true})
+  .end()
+  cb null, xml, id
 
 # This function return true/false if an XML document is signed with the provided
 # cert. This is NOT sufficient for signature checks as it doesn't verify the
@@ -112,11 +115,17 @@ module.exports.ServiceProvider =
     constructor: (@issuer, @private_key, @certificate) ->
 
     # -- Required
-    # Returns a redirect URL, at which a user can login
+    # Returns a redirect URL, at which a user can login, and the ID of the request.
     create_login_url: (identity_provider, assert_endpoint, cb) =>
-      zlib.deflateRaw create_authn_request(@issuer, assert_endpoint, identity_provider.sso_login_url), (err, deflated) ->
-        cb err if err?
-        cb null, "#{identity_provider.sso_login_url}?SAMLRequest=" + encodeURIComponent(deflated.toString('base64'))
+      request_id = null
+      async.waterfall [
+        (cb_wf) => create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, cb_wf
+        (authn_request, id, cb_wf) ->
+          request_id = id
+          zlib.deflateRaw authn_request, cb_wf
+      ], (err, deflated) ->
+        return cb err if err?
+        cb null, "#{identity_provider.sso_login_url}?SAMLRequest=" + encodeURIComponent(deflated.toString('base64')), request_id
 
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
