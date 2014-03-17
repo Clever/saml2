@@ -1,5 +1,5 @@
 _             = require 'underscore'
-saml2         = require '../lib/saml2'
+saml2         = require "#{__dirname}/../index"
 assert        = require 'assert'
 async         = require 'async'
 url           = require 'url'
@@ -34,6 +34,20 @@ describe 'saml2', ->
     xit 'contains expected fields', (done) ->
       assert false
       done()
+
+  describe 'pretty_assertion_attributes', ->
+    it 'creates a correct user object', ->
+      test_attributes =
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": [ "tuser@example.com" ]
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": [ "Test User" ]
+        "http://schemas.xmlsoap.org/claims/Group": [ "Test Group" ]
+
+      expected =
+        email: "tuser@example.com"
+        name: "Test User"
+        group: "Test Group"
+
+      assert.deepEqual saml2.pretty_assertion_attributes(test_attributes), expected
 
   # Assert
   describe 'assert', ->
