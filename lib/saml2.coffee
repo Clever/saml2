@@ -162,3 +162,12 @@ module.exports.ServiceProvider =
 module.exports.IdentityProvider =
   class IdentityProvider
     constructor: (@sso_login_url, @sso_logout_url, @certificate) ->
+
+if process.env.NODE_ENV is "test"
+  module.exports.create_authn_request = create_authn_request
+  module.exports.check_saml_signature = check_saml_signature
+  module.exports.check_status_success = check_status_success
+  module.exports.decrypt_assertion = decrypt_assertion
+  module.exports.parse_response_header = parse_response_header
+  module.exports.parse_assertion_attributes = parse_assertion_attributes
+  module.exports.pretty_assertion_attributes = pretty_assertion_attributes
