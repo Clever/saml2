@@ -1,7 +1,5 @@
 *~
 node_modules
-*.crt
-*.pem
 lib-js
 lib-js-cov
 *.html
