@@ -105,8 +105,8 @@ pretty_assertion_attributes = (assertion_attributes) ->
   _(assertion_attributes)
     .chain()
     .pairs()
-    .filter ([k, v]) -> (claim_map[k]? and v.length > 0)
-    .map ([k, v]) -> [claim_map[k], v[0]]
+    .filter(([k, v]) -> (claim_map[k]? and v.length > 0))
+    .map(([k, v]) -> [claim_map[k], v[0]])
     .object()
     .value()
 
