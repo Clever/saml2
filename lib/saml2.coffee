@@ -37,10 +37,11 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
 check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")[0]
+  signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  return cb new Error("Expected 1 Signature; found #{signature.length}") unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> certificate
-  sig.loadSignature signature.toString()
+  sig.loadSignature signature[0].toString()
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
 
@@ -56,16 +57,22 @@ decrypt_assertion = (dom, private_key, cb) ->
   cb = _.wrap cb, (fn, args...) -> setTimeout (-> fn args...), 0
 
   try
-    encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
-    encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
-    xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
+    encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')
+    return cb new Error("Expected 1 EncryptedAssertion; found #{encrypted_assertion.length}.") unless encrypted_assertion.length is 1
+
+    encrypted_data = encrypted_assertion[0].getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')
+    return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.") unless encrypted_data.length is 1
+
+    xmlenc.decrypt encrypted_data[0].toString(), (key: private_key), cb
   catch err
     cb new Error("Decrypt failed: #{util.inspect err}")
 
 parse_response_header = (dom, cb) ->
-  response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')[0]
+  response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
+  return cb new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
+
   response_header = {}
-  for attr in response.attributes
+  for attr in response[0].attributes
     switch attr.name
       when "Version"
         return cb new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
@@ -76,10 +83,14 @@ parse_response_header = (dom, cb) ->
   cb null, response_header
 
 parse_assertion_attributes = (dom, cb) ->
-  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')[0]
-  attribute_statement = assertion.getElementsByTagName('AttributeStatement')[0]
+  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  return cb new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
+
+  attribute_statement = assertion[0].getElementsByTagName('AttributeStatement')
+  return cb new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
+
   assertion_attributes = {}
-  for attribute in attribute_statement.childNodes
+  for attribute in attribute_statement[0].childNodes
     for attr in attribute.attributes
       if attr.name is 'Name'
         attribute_name = attr.value
