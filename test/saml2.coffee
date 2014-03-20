@@ -129,10 +129,10 @@ describe 'saml2', ->
 
     it 'can create login url', (done) ->
       sp = new saml2.ServiceProvider 'private_key', 'cert'
-      idp = new saml2.IdentityProvider 'login_url', 'logout_url', 'other_service_cert'
+      idp = new saml2.IdentityProvider 'http://idp.example.com/login', 'http://idp.example.com/logout', 'other_service_cert'
 
       async.waterfall [
-        (cb_wf) => sp.create_login_url idp, 'assert_url', cb_wf
+        (cb_wf) => sp.create_login_url idp, 'http://sp.example.com/assert', cb_wf
       ], (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true

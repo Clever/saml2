@@ -2,6 +2,7 @@ _             = require 'underscore'
 async         = require 'async'
 crypto        = require 'crypto'
 {parseString} = require 'xml2js'
+url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder'
 xmlcrypto     = require 'xml-crypto'
@@ -22,7 +23,7 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
       '@Destination': destination
       '@AssertionConsumerServiceURL': assert_endpoint
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
-      'saml:Issuer': "https://saml.not.clever.com/metadata.xml"
+      'saml:Issuer': issuer
       NameIDPolicy:
         '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
@@ -130,7 +131,10 @@ module.exports.ServiceProvider =
           zlib.deflateRaw authn_request, cb_wf
       ], (err, deflated) ->
         return cb err if err?
-        cb null, "#{identity_provider.sso_login_url}?SAMLRequest=" + encodeURIComponent(deflated.toString('base64')), request_id
+        uri = url.parse identity_provider.sso_login_url
+        uri.query =
+          SAMLRequest: deflated.toString 'base64'
+        cb null, url.format(uri), request_id
 
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
