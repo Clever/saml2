@@ -52,9 +52,14 @@ check_status_success = (dom, cb) ->
   return cb new Error("SAML status wasn't success!")
 
 decrypt_assertion = (dom, private_key, cb) ->
-  encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
-  encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
-  xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
+  cb = _.wrap cb, (fn, args...) -> setTimeout (-> fn args...), 0
+
+  try
+    encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')[0]
+    encrypted_data = encrypted_assertion.getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')[0]
+    xmlenc.decrypt encrypted_data.toString(), (key: private_key), cb
+  catch err
+    cb new Error("Decrypt failed: #{util.inspect err}")
 
 parse_response_header = (dom, cb) ->
   response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')[0]

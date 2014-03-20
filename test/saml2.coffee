@@ -4,6 +4,7 @@ async         = require 'async'
 fs            = require 'fs'
 saml2         = require "#{__dirname}/../index"
 url           = require 'url'
+util          = require 'util'
 xmldom        = require 'xmldom'
 
 describe 'saml2', ->
@@ -57,7 +58,14 @@ describe 'saml2', ->
       key = fs.readFileSync("#{__dirname}/data/test.pem").toString()
       saml2.decrypt_assertion encrypted_dom, key, (err, result) ->
         assert not err?, "Got error: #{err}"
-        assert result, fs.readFileSync("#{__dirname}/data/encrypted_expected.xml")
+        assert.equal result, fs.readFileSync("#{__dirname}/data/encrypted_expected.xml").toString()
+        done()
+
+    it 'errors if an incorrect key is used', (done) ->
+      encrypted_dom = (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/encrypted.xml").toString()
+      key = fs.readFileSync("#{__dirname}/data/test2.pem").toString()
+      saml2.decrypt_assertion encrypted_dom, key, (err, result) ->
+        assert (err instanceof Error), "Did not get expected error."
         done()
 
   # Assert
