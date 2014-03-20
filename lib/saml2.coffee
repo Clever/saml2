@@ -10,7 +10,8 @@ xmldom        = require 'xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 
-
+# Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
+# request.
 create_authn_request = (issuer, assert_endpoint, destination, cb) ->
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create
@@ -30,10 +31,9 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
   .end()
   cb null, xml, id
 
-# This function return true/false if an XML document is signed with the provided
-# cert. This is NOT sufficient for signature checks as it doesn't verify the
-# signature is signing the important content, nor is it preventing the parsing
-# of unsigned content.
+# This function return true/false if an XML document is signed with the provided cert. This is NOT sufficient for
+# signature checks as it doesn't verify the signature is signing the important content, nor is it preventing the
+# parsing of unsigned content.
 check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
@@ -53,6 +53,9 @@ check_status_success = (dom, cb) ->
       return cb null if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   return cb new Error("SAML status wasn't success!")
 
+# Takes in an xml @dom of an object containing an EncryptedAssertion and attempts to decrypt it using the @private_key.
+# @cb will be called with an error if the decryption fails, or the EncryptedAssertion cannot be found. If successful,
+# it will be called with the decrypted data as a string.
 decrypt_assertion = (dom, private_key, cb) ->
   cb = _.wrap cb, (fn, args...) -> setTimeout (-> fn args...), 0
 
@@ -67,6 +70,9 @@ decrypt_assertion = (dom, private_key, cb) ->
   catch err
     cb new Error("Decrypt failed: #{util.inspect err}")
 
+# Takes in an xml @dom of an object containing a SAML Response and returns an object containing the Destination and
+# InResponseTo attributes of the Response if present. It will call @cb with an error if the Response is missing or does
+# not appear to be valid.
 parse_response_header = (dom, cb) ->
   response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
   return cb new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
@@ -82,6 +88,9 @@ parse_response_header = (dom, cb) ->
         response_header.in_response_to = attr.value
   cb null, response_header
 
+# Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
+# contained within the Assertion. It will call @cb with an error if the Assertion is missing or does not appear to be
+# valid.
 parse_assertion_attributes = (dom, cb) ->
   assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
   return cb new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
@@ -98,6 +107,9 @@ parse_assertion_attributes = (dom, cb) ->
     assertion_attributes[attribute_name] = _(attribute.childNodes).map (attribute_value) -> attribute_value.childNodes[0].data
   cb null, assertion_attributes
 
+# Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed
+# into nicer names. Attributes that are not expected are ignored, and attributes with more than one value with have
+# all values except the first one dropped.
 pretty_assertion_attributes = (assertion_attributes) ->
   claim_map =
     "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email"
