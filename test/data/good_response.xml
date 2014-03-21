@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_2" Version="2.0" InResponseTo="_1">
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </samlp:Status>
+  <EncryptedAssertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion">
+    <xenc:EncryptedData Type="http://www.w3.org/2001/04/xmlenc#Element" xmlns:xenc="http://www.w3.org/2001/04/xmlenc#">
+      <xenc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#aes256-cbc" />
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+      <e:EncryptedKey xmlns:e="http://www.w3.org/2001/04/xmlenc#">
+        <e:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p">
+          <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+        </e:EncryptionMethod>
+        <KeyInfo>
+          <X509Data>
+            <X509IssuerSerial>
+              <X509IssuerName>O=Internet Widgits Pty Ltd</X509IssuerName>
+              <X509SerialNumber>17223777059262469726</X509SerialNumber>
+            </X509IssuerSerial>
+          </X509Data>
+        </KeyInfo>
+        <e:CipherData>
+          <e:CipherValue>ql07diGZymd3QR1wTMOt6n5TbWOUmPg7Oumx1dtzfr75eYELnz3eHuwWHJ8r6ZjK+Oac5Qa7blluei7VTkod/En8JvUn63yoPNtFMWciL38bjPE9bkWBi4qugptmhOSg2nAjqUNu1n5DfPN32AB7VAmk6lfe+Q29vlHbliPfAIBxUpxZHUe4aGcHG7E0+telG/Zjy5sZXnLyrSHrOenkdBEDkUQf5jiIDgphWeEx3O2/wdgwTLpjMWX2Dk27BxivGitzcd/RBHUAA4LGEqsx6p7LLEzrlxwpA0818bhKDL1MT8Y4bfbkfDtj5rsqG4ZcYlembMday5Te4e5rGxnH2A==</e:CipherValue>
+        </e:CipherData>
+      </e:EncryptedKey>
+    </KeyInfo>
+      <xenc:CipherData>
+        <xenc:CipherValue>KIwhFfRvambizmOl1TCmbYZF6E/62Ye16byOe+G2Ruu8shHsSH1yc5HuzOQ4eQVtWn3rSU7Q8iNJQGPWbxhxc4KGBvUhAYvK7dpNZ5ZNoQNP0ABE3MLr5d5uo5KhMk+TudBj8rh4FiO0UnsRns3Xd+4c9kf3o7rTw7FT05ll7QGAxCOwEeV54El542FQ+RKgVXoNMHaHZFZeYG8LcrKC7lCq9wuTqe6md1rA+JOhqXle8O0jqqAzYhT9VdR9iq0X</xenc:CipherValue>
+      </xenc:CipherData>
+    </xenc:EncryptedData>
+  </EncryptedAssertion>
+</samlp:Response>
