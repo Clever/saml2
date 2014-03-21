@@ -31,12 +31,25 @@ describe 'saml2', ->
 
   # Auth Request, before it is compressed and base-64 encoded
   describe 'AuthRequest', ->
-    xit 'is valid xml', (done) ->
-      assert false
-      done()
-    xit 'contains expected fields', (done) ->
-      assert false
-      done()
+    it 'contains expected fields', (done) ->
+      saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login', (err, result) ->
+        assert not err?, "Got error: #{err}"
+        dom = (new xmldom.DOMParser()).parseFromString result
+        authn_request = dom.getElementsByTagName('AuthnRequest')[0]
+
+        required_attributes =
+          Version: '2.0'
+          Destination: 'https://idp.example.com/login'
+          AssertionConsumerServiceURL: 'https://sp.example.com/assert'
+          ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+
+        _(required_attributes).each (req_value, req_name) ->
+          assert _(authn_request.attributes).some((attr) -> attr.name is req_name and attr.value is req_value)
+          , "Expected to find attribute '#{req_name}' with value '#{req_value}'!"
+
+        assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
+        assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
+        done()
 
   describe 'pretty_assertion_attributes', ->
     it 'creates a correct user object', ->
