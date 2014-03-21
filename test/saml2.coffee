@@ -9,6 +9,9 @@ xmldom        = require 'xmldom'
 
 describe 'saml2', ->
 
+  before ->
+    @good_response_dom = (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/good_response.xml").toString()
+
   describe 'xml metadata', ->
     xit 'is valid xml', (done) ->
       assert false
@@ -51,6 +54,15 @@ describe 'saml2', ->
         assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
         done()
 
+  describe 'check_status_success', ->
+    it 'accepts a valid success status', (done) ->
+      saml2.check_status_success @good_response_dom, (err) ->
+        assert not err?, "Got error: #{err}"
+        done()
+
+    xit 'rejects a missing success status', (done) ->
+      done()
+
   describe 'pretty_assertion_attributes', ->
     it 'creates a correct user object', ->
       test_attributes =
@@ -67,17 +79,15 @@ describe 'saml2', ->
 
   describe 'decrypt_assertion', ->
     it 'decrypts and extracts an assertion', (done) ->
-      encrypted_dom = (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/encrypted.xml").toString()
       key = fs.readFileSync("#{__dirname}/data/test.pem").toString()
-      saml2.decrypt_assertion encrypted_dom, key, (err, result) ->
+      saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
         assert not err?, "Got error: #{err}"
-        assert.equal result, fs.readFileSync("#{__dirname}/data/encrypted_expected.xml").toString()
+        assert.equal result, fs.readFileSync("#{__dirname}/data/good_response_decrypted.xml").toString()
         done()
 
     it 'errors if an incorrect key is used', (done) ->
-      encrypted_dom = (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/encrypted.xml").toString()
       key = fs.readFileSync("#{__dirname}/data/test2.pem").toString()
-      saml2.decrypt_assertion encrypted_dom, key, (err, result) ->
+      saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 

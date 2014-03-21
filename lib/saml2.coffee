@@ -31,7 +31,7 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
   .end()
   cb null, xml, id
 
-# This function return true/false if an XML document is signed with the provided cert. This is NOT sufficient for
+# This function calls @cb with no error if an XML document is signed with the provided cert. This is NOT sufficient for
 # signature checks as it doesn't verify the signature is signing the important content, nor is it preventing the
 # parsing of unsigned content.
 check_saml_signature = (xml, certificate, cb) ->
@@ -45,12 +45,14 @@ check_saml_signature = (xml, certificate, cb) ->
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
 
+# Takes in an xml @dom containing a SAML Status and calls @cb with no error if at least one status is Success.
 check_status_success = (dom, cb) ->
   status = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Status')
   return cb new Error("No SAML status found!") unless status.length is 1
   for status_code in status[0].childNodes
-    for attr in status_code.attributes
-      return cb null if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+    if status_code.attributes?
+      for attr in status_code.attributes
+        return cb null if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   return cb new Error("SAML status wasn't success!")
 
 # Takes in an xml @dom of an object containing an EncryptedAssertion and attempts to decrypt it using the @private_key.
