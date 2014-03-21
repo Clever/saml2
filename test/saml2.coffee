@@ -9,8 +9,11 @@ xmldom        = require 'xmldom'
 
 describe 'saml2', ->
 
+  dom_from_data_file = (filename) ->
+    (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/#{filename}").toString()
+
   before ->
-    @good_response_dom = (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/good_response.xml").toString()
+    @good_response_dom = dom_from_data_file "good_response.xml"
 
   describe 'xml metadata', ->
     xit 'is valid xml', (done) ->
@@ -60,8 +63,15 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         done()
 
-    xit 'rejects a missing success status', (done) ->
-      done()
+    it 'rejects a missing success status', (done) ->
+      saml2.check_status_success dom_from_data_file("response_error_status.xml"), (err) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
+
+    it 'rejects a missing status', (done) ->
+      saml2.check_status_success dom_from_data_file("response_no_status.xml"), (err) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
 
   describe 'pretty_assertion_attributes', ->
     it 'creates a correct user object', ->
