@@ -37,61 +37,51 @@ describe 'saml2', ->
 
   # Auth Request, before it is compressed and base-64 encoded
   describe 'create_authn_request', ->
-    it 'contains expected fields', (done) ->
-      saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login', (err, result) ->
-        assert not err?, "Got error: #{err}"
-        dom = (new xmldom.DOMParser()).parseFromString result
-        authn_request = dom.getElementsByTagName('AuthnRequest')[0]
+    it 'contains expected fields', ->
+      { id, xml } = saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login'
+      dom = (new xmldom.DOMParser()).parseFromString xml
+      authn_request = dom.getElementsByTagName('AuthnRequest')[0]
 
-        required_attributes =
-          Version: '2.0'
-          Destination: 'https://idp.example.com/login'
-          AssertionConsumerServiceURL: 'https://sp.example.com/assert'
-          ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+      required_attributes =
+        Version: '2.0'
+        Destination: 'https://idp.example.com/login'
+        AssertionConsumerServiceURL: 'https://sp.example.com/assert'
+        ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
 
-        _(required_attributes).each (req_value, req_name) ->
-          assert _(authn_request.attributes).some((attr) -> attr.name is req_name and attr.value is req_value)
-          , "Expected to find attribute '#{req_name}' with value '#{req_value}'!"
+      _(required_attributes).each (req_value, req_name) ->
+        assert _(authn_request.attributes).some((attr) -> attr.name is req_name and attr.value is req_value)
+        , "Expected to find attribute '#{req_name}' with value '#{req_value}'!"
 
-        assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
-        assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
-        done()
+      assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
+      assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
 
   describe 'create_metadata', ->
-    it 'contains expected fields', (done) ->
+    it 'contains expected fields', ->
       cert = fs.readFileSync "#{__dirname}/data/test.crt"
       cert2 = fs.readFileSync "#{__dirname}/data/test2.crt"
 
-      saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2, (err, result) ->
-        dom = (new xmldom.DOMParser()).parseFromString result
+      metadata = saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2
+      dom = (new xmldom.DOMParser()).parseFromString metadata
 
-        entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
-        assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
-          , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
+      entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
+      assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
+        , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
 
-        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
-          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
-            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
-          , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
-
-        done()
+      assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
+        _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
+          _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
+        , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
 
 
   describe 'check_status_success', =>
-    it 'accepts a valid success status', (done) =>
-      saml2.check_status_success @good_response_dom, (err) ->
-        assert not err?, "Got error: #{err}"
-        done()
+    it 'accepts a valid success status', =>
+      assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
 
-    it 'rejects a missing success status', (done) ->
-      saml2.check_status_success dom_from_data_file("response_error_status.xml"), (err) ->
-        assert (err instanceof Error), "Did not get expected error."
-        done()
+    it 'rejects a missing success status', ->
+      assert not saml2.check_status_success(dom_from_data_file("response_error_status.xml")), "Did not get 'false' for invalid response."
 
-    it 'rejects a missing status', (done) ->
-      saml2.check_status_success dom_from_data_file("response_no_status.xml"), (err) ->
-        assert (err instanceof Error), "Did not get expected error."
-        done()
+    it 'rejects a missing status', ->
+      assert not saml2.check_status_success(dom_from_data_file("response_no_status.xml")), "Did not get 'false' for invalid response."
 
   describe 'pretty_assertion_attributes', ->
     it 'creates a correct user object', ->

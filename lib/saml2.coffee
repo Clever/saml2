@@ -1,5 +1,5 @@
 _             = require 'underscore'
-async         = require 'async'
+async         = _.extend require('async'), require('async-ext')
 crypto        = require 'crypto'
 {parseString} = require 'xml2js'
 url           = require 'url'
@@ -12,7 +12,7 @@ zlib          = require 'zlib'
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination, cb) ->
+create_authn_request = (issuer, assert_endpoint, destination) ->
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create
     AuthnRequest:
@@ -29,11 +29,11 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
         '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
   .end()
-  cb null, xml, id
+  { id, xml }
 
 # Creates metadata and returns it as a string of xml. The metadata has one POST assertion endpoint.
-create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate, cb) ->
-  xml = xmlbuilder.create
+create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate) ->
+  xmlbuilder.create
     'md:EntityDescriptor':
       '@xmlns:md': 'urn:oasis:names:tc:SAML:2.0:metadata'
       '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
@@ -48,12 +48,11 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
             '@index': '0'
         ]
   .end()
-  cb null, xml
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
   cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
-  return null if cert_data?.length is 0
+  throw new Error('Invalid Certificate') if cert_data?.length is 0
 
   {
     '@use': use
@@ -78,20 +77,21 @@ check_saml_signature = (xml, certificate, cb) ->
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
 
-# Takes in an xml @dom containing a SAML Status and calls @cb with no error if at least one status is Success.
-check_status_success = (dom, cb) ->
+# Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
+check_status_success = (dom) ->
   status = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Status')
-  return cb new Error("No SAML status found!") unless status.length is 1
+  return false unless status.length is 1
   for status_code in status[0].childNodes
     if status_code.attributes?
       for attr in status_code.attributes
-        return cb null if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
-  return cb new Error("SAML status wasn't success!")
+        return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+  false
 
 # Takes in an xml @dom of an object containing an EncryptedAssertion and attempts to decrypt it using the @private_key.
 # @cb will be called with an error if the decryption fails, or the EncryptedAssertion cannot be found. If successful,
 # it will be called with the decrypted data as a string.
 decrypt_assertion = (dom, private_key, cb) ->
+  # This is needed because xmlenc sometimes throws an exception, and sometimes calls the passed in callback.
   cb = _.wrap cb, (fn, args...) -> setTimeout (-> fn args...), 0
 
   try
@@ -106,41 +106,40 @@ decrypt_assertion = (dom, private_key, cb) ->
     cb new Error("Decrypt failed: #{util.inspect err}")
 
 # Takes in an xml @dom of an object containing a SAML Response and returns an object containing the Destination and
-# InResponseTo attributes of the Response if present. It will call @cb with an error if the Response is missing or does
-# not appear to be valid.
-parse_response_header = (dom, cb) ->
+# InResponseTo attributes of the Response if present. It will throw an error if the Response is missing or does not
+# appear to be valid.
+parse_response_header = (dom) ->
   response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
-  return cb new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
+  throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
   response_header = {}
   for attr in response[0].attributes
     switch attr.name
       when "Version"
-        return cb new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
+        throw new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
       when "Destination"
         response_header.destination = attr.value
       when "InResponseTo"
         response_header.in_response_to = attr.value
-  cb null, response_header
+  response_header
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
-# contained within the Assertion. It will call @cb with an error if the Assertion is missing or does not appear to be
-# valid.
-parse_assertion_attributes = (dom, cb) ->
+# contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
+parse_assertion_attributes = (dom) ->
   assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
-  return cb new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
+  throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
   attribute_statement = assertion[0].getElementsByTagName('AttributeStatement')
-  return cb new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
+  throw new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
 
   assertion_attributes = {}
   for attribute in attribute_statement[0].childNodes
     for attr in attribute.attributes
       if attr.name is 'Name'
         attribute_name = attr.value
-    return cb new Error("Invalid attribute without name") unless attribute_name?
+    throw new Error("Invalid attribute without name") unless attribute_name?
     assertion_attributes[attribute_name] = _(attribute.childNodes).map (attribute_value) -> attribute_value.childNodes[0].data
-  cb null, assertion_attributes
+  assertion_attributes
 
 # Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed
 # into nicer names. Attributes that are not expected are ignored, and attributes with more than one value with have
@@ -181,18 +180,13 @@ module.exports.ServiceProvider =
     # -- Required
     # Returns a redirect URL, at which a user can login, and the ID of the request.
     create_login_url: (identity_provider, assert_endpoint, cb) =>
-      request_id = null
-      async.waterfall [
-        (cb_wf) => create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, cb_wf
-        (authn_request, id, cb_wf) ->
-          request_id = id
-          zlib.deflateRaw authn_request, cb_wf
-      ], (err, deflated) ->
+      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url
+      zlib.deflateRaw xml, (err, deflated) ->
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
         uri.query =
           SAMLRequest: deflated.toString 'base64'
-        cb null, url.format(uri), request_id
+        cb null, url.format(uri), id
 
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
@@ -202,15 +196,15 @@ module.exports.ServiceProvider =
       user = {}
 
       async.waterfall [
-        (cb_wf) -> parse_response_header saml_response, cb_wf
-        (response_header, cb_wf) ->
+        (cb_wf) -> async.lift(parse_response_header) saml_response, cb_wf
+        (response_header, cb_wf) =>
           user = { response_header }
-          check_status_success saml_response, cb_wf
-        (cb_wf) => decrypt_assertion saml_response, @private_key, cb_wf
+          cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
+          decrypt_assertion saml_response, @private_key, cb_wf
         (result, cb_wf) ->
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
           check_saml_signature result, identity_provider.certificate, cb_wf
-        (cb_wf) -> parse_assertion_attributes decrypted_assertion, cb_wf
+        (cb_wf) -> async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
         (assertion_attributes, cb_wf) ->
           user = _.extend user, pretty_assertion_attributes(assertion_attributes)
           user = _.extend user, attributes: assertion_attributes
