@@ -57,7 +57,27 @@ describe 'saml2', ->
         assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
         done()
 
-  describe 'check_status_success', ->
+  describe 'create_metadata', ->
+    it 'contains expected fields', (done) ->
+      cert = fs.readFileSync "#{__dirname}/data/test.crt"
+      cert2 = fs.readFileSync "#{__dirname}/data/test2.crt"
+
+      saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2, (err, result) ->
+        dom = (new xmldom.DOMParser()).parseFromString result
+
+        entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
+        assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
+          , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
+
+        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
+          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
+            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
+          , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
+
+        done()
+
+
+  describe 'check_status_success', =>
     it 'accepts a valid success status', (done) =>
       saml2.check_status_success @good_response_dom, (err) ->
         assert not err?, "Got error: #{err}"
@@ -87,7 +107,7 @@ describe 'saml2', ->
 
       assert.deepEqual saml2.pretty_assertion_attributes(test_attributes), expected
 
-  describe 'decrypt_assertion', ->
+  describe 'decrypt_assertion', =>
     it 'decrypts and extracts an assertion', (done) =>
       key = fs.readFileSync("#{__dirname}/data/test.pem").toString()
       saml2.decrypt_assertion @good_response_dom, key, (err, result) ->

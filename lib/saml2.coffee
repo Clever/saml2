@@ -31,6 +31,39 @@ create_authn_request = (issuer, assert_endpoint, destination, cb) ->
   .end()
   cb null, xml, id
 
+# Creates metadata and returns it as a string of xml. The metadata has one POST assertion endpoint.
+create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate, cb) ->
+  xml = xmlbuilder.create
+    'md:EntityDescriptor':
+      '@xmlns:md': 'urn:oasis:names:tc:SAML:2.0:metadata'
+      '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
+      '@entityID': issuer
+      'md:SPSSODescriptor': [
+          '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol',
+          { 'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate) },
+          { 'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate) },
+          'md:AssertionConsumerService':
+            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+            '@Location': assert_endpoint
+            '@index': '0'
+        ]
+  .end()
+  cb null, xml
+
+# Converts a pem certificate to a KeyInfo object for use with XML.
+certificate_to_keyinfo = (use, certificate) ->
+  cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
+  return null if cert_data?.length is 0
+
+  {
+    '@use': use
+    'ds:KeyInfo':
+      '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
+      'ds:X509Data':
+        'ds:X509Certificate':
+          cert_data[1].replace(/[\r\n|\n]/g, '')
+  }
+
 # This function calls @cb with no error if an XML document is signed with the provided cert. This is NOT sufficient for
 # signature checks as it doesn't verify the signature is signing the important content, nor is it preventing the
 # parsing of unsigned content.
@@ -190,8 +223,8 @@ module.exports.ServiceProvider =
       return
 
     # Returns XML metadata, used during initial SAML configuration
-    create_metadata: (identity_provider, cb) ->
-      return
+    create_metadata: (identity_provider, assert_endpoint, cb) =>
+      create_metadata @issuer, assert_endpoint, @certificate, @certificate, cb
 
 module.exports.IdentityProvider =
   class IdentityProvider
@@ -199,6 +232,7 @@ module.exports.IdentityProvider =
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
+  module.exports.create_metadata = create_metadata
   module.exports.check_saml_signature = check_saml_signature
   module.exports.check_status_success = check_status_success
   module.exports.decrypt_assertion = decrypt_assertion
