@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_2" Version="2.0" InResponseTo="_1">
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_2" Version="2.0" InResponseTo="_1" Destination="https://sp.example.com/assert">
   <samlp:Status>
     <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
   </samlp:Status>

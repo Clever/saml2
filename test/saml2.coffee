@@ -8,12 +8,14 @@ util          = require 'util'
 xmldom        = require 'xmldom'
 
 describe 'saml2', ->
+  get_test_file = (filename) ->
+    fs.readFileSync("#{__dirname}/data/#{filename}").toString()
 
-  dom_from_data_file = (filename) ->
-    (new xmldom.DOMParser()).parseFromString fs.readFileSync("#{__dirname}/data/#{filename}").toString()
+  dom_from_test_file = (filename) ->
+    (new xmldom.DOMParser()).parseFromString get_test_file filename
 
   before =>
-    @good_response_dom = dom_from_data_file "good_response.xml"
+    @good_response_dom = dom_from_test_file "good_response.xml"
 
   describe 'xml metadata', ->
     it.skip 'is valid xml', (done) ->
@@ -74,17 +76,17 @@ describe 'saml2', ->
 
   describe 'check_saml_signature', ->
     it 'accepts signed xml', (done) ->
-      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/good_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test.crt").toString(), (err) ->
+      saml2.check_saml_signature get_test_file("good_assertion.xml"), get_test_file("test.crt"), (err) ->
         assert not err?, "Got error: #{err}"
         done()
 
     it 'rejects xml without a signature', (done) ->
-      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/unsigned_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test.crt").toString(), (err) ->
+      saml2.check_saml_signature get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"), (err) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
     it 'rejects xml with an invalid signature', (done) ->
-      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/good_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test2.crt").toString(), (err) ->
+      saml2.check_saml_signature get_test_file("good_assertion.xml"), get_test_file("test2.crt"), (err) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
@@ -93,10 +95,10 @@ describe 'saml2', ->
       assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
 
     it 'rejects a missing success status', ->
-      assert not saml2.check_status_success(dom_from_data_file("response_error_status.xml")), "Did not get 'false' for invalid response."
+      assert not saml2.check_status_success(dom_from_test_file("response_error_status.xml")), "Did not get 'false' for invalid response."
 
     it 'rejects a missing status', ->
-      assert not saml2.check_status_success(dom_from_data_file("response_no_status.xml")), "Did not get 'false' for invalid response."
+      assert not saml2.check_status_success(dom_from_test_file("response_no_status.xml")), "Did not get 'false' for invalid response."
 
   describe 'pretty_assertion_attributes', ->
     it 'creates a correct user object', ->
@@ -114,17 +116,30 @@ describe 'saml2', ->
 
   describe 'decrypt_assertion', =>
     it 'decrypts and extracts an assertion', (done) =>
-      key = fs.readFileSync("#{__dirname}/data/test.pem").toString()
+      key = get_test_file("test.pem")
       saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
         assert not err?, "Got error: #{err}"
-        assert.equal result, fs.readFileSync("#{__dirname}/data/good_response_decrypted.xml").toString()
+        assert.equal result, get_test_file("good_response_decrypted.xml")
         done()
 
     it 'errors if an incorrect key is used', (done) =>
-      key = fs.readFileSync("#{__dirname}/data/test2.pem").toString()
+      key = get_test_file("test2.pem")
       saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
+
+  describe 'parse_response_header', =>
+    it 'correctly parses a response header', =>
+      response = saml2.parse_response_header @good_response_dom
+      assert.equal response.destination, 'https://sp.example.com/assert'
+      assert.equal response.in_response_to, '_1'
+
+    it 'errors if there is no response', ->
+      # An assertion is not a response, so this should fail.
+      assert.throws -> saml2.parse_response_header dom_from_test_file("good_assertion.xml")
+
+    it 'errors if given a response with the wrong version', ->
+      assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
 
   # Assert
   describe 'assert', ->
@@ -187,10 +202,10 @@ describe 'saml2', ->
 
     it 'can create login url', (done) ->
       sp = new saml2.ServiceProvider 'private_key', 'cert'
-      idp = new saml2.IdentityProvider 'http://idp.example.com/login', 'http://idp.example.com/logout', 'other_service_cert'
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
 
       async.waterfall [
-        (cb_wf) -> sp.create_login_url idp, 'http://sp.example.com/assert', cb_wf
+        (cb_wf) -> sp.create_login_url idp, 'https://sp.example.com/assert', cb_wf
       ], (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
