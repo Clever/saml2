@@ -72,6 +72,21 @@ describe 'saml2', ->
           _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
         , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
 
+  describe 'check_saml_signature', ->
+    it 'accepts signed xml', (done) ->
+      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/good_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test.crt").toString(), (err) ->
+        assert not err?, "Got error: #{err}"
+        done()
+
+    it 'rejects xml without a signature', (done) ->
+      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/unsigned_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test.crt").toString(), (err) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
+
+    it 'rejects xml with an invalid signature', (done) ->
+      saml2.check_saml_signature fs.readFileSync("#{__dirname}/data/good_assertion.xml").toString(), fs.readFileSync("#{__dirname}/data/test2.crt").toString(), (err) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
 
   describe 'check_status_success', =>
     it 'accepts a valid success status', =>
