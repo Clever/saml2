@@ -133,12 +133,12 @@ parse_assertion_attributes = (dom) ->
   throw new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
 
   assertion_attributes = {}
-  for attribute in attribute_statement[0].childNodes
+  for attribute in attribute_statement[0].getElementsByTagName('Attribute')
     for attr in attribute.attributes
       if attr.name is 'Name'
         attribute_name = attr.value
     throw new Error("Invalid attribute without name") unless attribute_name?
-    assertion_attributes[attribute_name] = _(attribute.childNodes).map (attribute_value) -> attribute_value.childNodes[0].data
+    assertion_attributes[attribute_name] = _(attribute.getElementsByTagName('AttributeValue')).map (attribute_value) -> attribute_value.childNodes[0].data
   assertion_attributes
 
 # Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed

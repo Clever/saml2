@@ -141,6 +141,19 @@ describe 'saml2', ->
     it 'errors if given a response with the wrong version', ->
       assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
 
+  describe 'parse_assertion_attributes', ->
+    it 'correctled parses assertion attributes', ->
+      expected_attributes =
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
+          'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
+          'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+
+      attributes = saml2.parse_assertion_attributes dom_from_test_file('good_assertion.xml')
+      assert.deepEqual attributes, expected_attributes
+
   # Assert
   describe 'assert', ->
     it.skip 'expects properly formatted XML', (done) ->
