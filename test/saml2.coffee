@@ -156,39 +156,41 @@ describe 'saml2', ->
 
   # Assert
   describe 'assert', ->
-    it.skip 'expects properly formatted XML', (done) ->
-      assert false
-      done()
-    it.skip 'expects base64 encoded SAMLResponse', (done) ->
-      assert false
-      done()
-    it.skip 'finds encrypted data in SAMLResponse', (done) ->
-      assert false
-      done()
-    it.skip 'can decode encrypted data in SAMLResponse', (done) ->
-      assert false
-      done()
-    it.skip 'fails to decode encrypted data with private key', (done) ->
-      assert false
-      done()
-    it.skip 'returns claims and their values', (done) ->
-      assert false
-      done()
-    it.skip 'errors if no claims are found', (done) ->
-      assert false
-      done()
-    it.skip 'allows claims with single or multiple value(s)', (done) ->
-      assert false
-      done()
-    it.skip 'does not verify the assertions session ID, by default', (done) ->
-      assert false
-      done()
-    it.skip 'verifies the assertions session ID, if specified by user', (done) ->
-      assert false
-      done()
-    it.skip 'verifies the documents signature', (done) ->
-      assert false
-      done()
+    it 'returns a user object when passed a valid AuthnResponse', (done) ->
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+
+      sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, user) ->
+        assert not err?, "Got error: #{err}"
+
+        expected_user =
+          response_header:
+            in_response_to: '_1'
+            destination: 'https://sp.example.com/assert'
+          given_name: 'Test',
+          email: 'tstudent@example.com',
+          ppid: 'tstudent',
+          group: 'CN=Students,CN=Users,DC=idp,DC=example,DC=com',
+          surname: 'Student',
+          common_name: 'Test Student',
+          attributes:
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
+            'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
+            'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+
+        assert.deepEqual user, expected_user
+        done()
+
+    it 'errors if passed invalid data', (done) ->
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+
+      sp.assert idp, { SAMLResponse: 'FAIL' }, (err, user) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
 
   describe 'check_signature', ->
     it.skip 'verifies document is signed', (done) ->

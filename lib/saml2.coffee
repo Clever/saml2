@@ -87,12 +87,17 @@ check_status_success = (dom) ->
         return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   false
 
+to_error = (err) ->
+  return null unless err?
+  return new Error(util.inspect err) unless err instanceof Error
+  err
+
 # Takes in an xml @dom of an object containing an EncryptedAssertion and attempts to decrypt it using the @private_key.
 # @cb will be called with an error if the decryption fails, or the EncryptedAssertion cannot be found. If successful,
 # it will be called with the decrypted data as a string.
 decrypt_assertion = (dom, private_key, cb) ->
   # This is needed because xmlenc sometimes throws an exception, and sometimes calls the passed in callback.
-  cb = _.wrap cb, (fn, args...) -> setTimeout (-> fn args...), 0
+  cb = _.wrap cb, (fn, err, args...) -> setTimeout (-> fn to_error(err), args...), 0
 
   try
     encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')
@@ -190,6 +195,9 @@ module.exports.ServiceProvider =
 
     # Returns user object, if the login attempt was valid.
     assert: (identity_provider, request_body, cb) ->
+      unless request_body?.SAMLResponse?
+        return setImmediate cb, new Error("Request body does not contain SAMLResponse.")
+
       saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
       decrypted_assertion = null
 
