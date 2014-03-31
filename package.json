@@ -39,7 +39,7 @@
     "xmlbuilder": "~2.1.0",
     "xml-crypto": "0.0.22",
     "xmldom": "~0.1.19",
-    "xml-encryption": "git+https://github.com/Clever/node-xml-encryption#fix-padding-bug",
+    "xml-encryption": "~0.6.0",
     "async": "~0.2.10",
     "async-ext": "~0.1.4"
   }
