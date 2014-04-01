@@ -49,6 +49,19 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
         ]
   .end()
 
+create_logout_request = (issuer, name_id, session_index) ->
+  xmlbuilder.create
+    'samlp:LogoutRequest':
+      '@xmlns:samlp': 'urn:oasis:names:tc:SAML:2.0:protocol'
+      '@xmlns:saml': 'urn:oasis:names:tc:SAML:2.0:assertion'
+      '@ID': '_' + crypto.randomBytes(21).toString('hex')
+      '@Version': '2.0'
+      '@IssueInstant': (new Date()).toISOString()
+      'saml:Issuer': issuer
+      'saml:NameID': name_id
+      'samlp:SessionIndex': session_index
+  .end()
+
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
   cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
@@ -239,7 +252,13 @@ module.exports.ServiceProvider =
         (result, cb_wf) ->
           decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
           check_saml_signature result, identity_provider.certificate, cb_wf
-        (cb_wf) -> async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
+        (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
+        (name_id, cb_wf) ->
+          user.name_id = name_id
+          async.lift(get_session_index) decrypted_assertion, cb_wf
+        (session_index, cb_wf) ->
+          user.session_index = session_index
+          async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
         (assertion_attributes, cb_wf) ->
           user = _.extend user, pretty_assertion_attributes(assertion_attributes)
           user = _.extend user, attributes: assertion_attributes
@@ -249,7 +268,13 @@ module.exports.ServiceProvider =
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
     create_logout_url: (user, identity_provider, cb) ->
-      return
+      xml = create_logout_request @issuer, user.name_id, user.session_index
+      zlib.deflateRaw xml, (err, deflated) ->
+        return cb err if err?
+        uri = url.parse identity_provider.sso_login_url
+        uri.query =
+          SAMLRequest: deflated.toString 'base64'
+        cb null, url.format(uri)
 
     # Returns XML metadata, used during initial SAML configuration
     create_metadata: (identity_provider, assert_endpoint, cb) =>

@@ -177,6 +177,8 @@ describe 'saml2', ->
           response_header:
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
+          name_id: 'tstudent'
+          session_index: '_3'
           given_name: 'Test',
           email: 'tstudent@example.com',
           ppid: 'tstudent',
