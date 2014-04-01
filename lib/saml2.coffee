@@ -142,6 +142,19 @@ get_name_id = (dom) ->
 
   nameid[0].firstChild?.data
 
+get_session_index = (dom) ->
+  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
+
+  authn_statement = assertion[0].getElementsByTagName('AuthnStatement')
+  throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length is 1
+
+  for attr in authn_statement[0].attributes
+    if attr.name is 'SessionIndex'
+      return attr.value
+
+  throw new Error("SessionIndex not an attribute of AuthnStatement.")
+
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
 parse_assertion_attributes = (dom) ->
@@ -255,4 +268,5 @@ if process.env.NODE_ENV is "test"
   module.exports.parse_response_header = parse_response_header
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.get_name_id = get_name_id
+  module.exports.get_session_index = get_session_index
   module.exports.pretty_assertion_attributes = pretty_assertion_attributes

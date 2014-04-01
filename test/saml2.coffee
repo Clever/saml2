@@ -146,6 +146,11 @@ describe 'saml2', ->
       name_id = saml2.get_name_id dom_from_test_file('good_assertion.xml')
       assert.equal name_id, 'tstudent'
 
+  describe 'get_session_index', ->
+    it 'gets the correct session index', ->
+      session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')
+      assert.equal session_index, '_3'
+
   describe 'parse_assertion_attributes', ->
     it 'correctled parses assertion attributes', ->
       expected_attributes =
