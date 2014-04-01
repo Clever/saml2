@@ -141,6 +141,11 @@ describe 'saml2', ->
     it 'errors if given a response with the wrong version', ->
       assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
 
+  describe 'get_name_id', ->
+    it 'gets the correct NameID', ->
+      name_id = saml2.get_name_id dom_from_test_file('good_assertion.xml')
+      assert.equal name_id, 'tstudent'
+
   describe 'parse_assertion_attributes', ->
     it 'correctled parses assertion attributes', ->
       expected_attributes =

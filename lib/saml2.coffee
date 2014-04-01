@@ -128,6 +128,20 @@ parse_response_header = (dom) ->
         response_header.in_response_to = attr.value
   response_header
 
+# Takes in an xml @dom of an object containing a SAML Assertion and returns the NameID. If there is no NameID found,
+# it will return null. It will throw an error if the Assertion is missing or does not appear to be valid.
+get_name_id = (dom) ->
+  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
+
+  subject = assertion[0].getElementsByTagName('Subject')
+  throw new Error("Expected 1 Subject; found #{subject.length}") unless subject.length is 1
+
+  nameid = subject[0].getElementsByTagName('NameID')
+  return null unless nameid.length is 1
+
+  nameid[0].firstChild?.data
+
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
 parse_assertion_attributes = (dom) ->
@@ -240,4 +254,5 @@ if process.env.NODE_ENV is "test"
   module.exports.decrypt_assertion = decrypt_assertion
   module.exports.parse_response_header = parse_response_header
   module.exports.parse_assertion_attributes = parse_assertion_attributes
+  module.exports.get_name_id = get_name_id
   module.exports.pretty_assertion_attributes = pretty_assertion_attributes
