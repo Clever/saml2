@@ -17,26 +17,6 @@ describe 'saml2', ->
   before =>
     @good_response_dom = dom_from_test_file "good_response.xml"
 
-  describe 'xml metadata', ->
-    it.skip 'is valid xml', (done) ->
-      assert false
-      done()
-    it.skip 'contains expected fields', (done) ->
-      assert false
-      done()
-
-  # Login
-  describe 'login url', ->
-    it.skip 'creates an AuthRequest that is base64 encoded and compressed', (done) ->
-      assert false
-      done()
-    it.skip 'includes relay URL', (done) ->
-      assert false
-      done()
-    it.skip 'is configured according to the identity provider', (done) ->
-      assert false
-      done()
-
   # Auth Request, before it is compressed and base-64 encoded
   describe 'create_authn_request', ->
     it 'contains expected fields', ->
@@ -204,27 +184,9 @@ describe 'saml2', ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
-  describe 'check_signature', ->
-    it.skip 'verifies document is signed', (done) ->
-      assert false
-      done()
-
-    # Other tests that *strictly* enforce the signature. For example...
-    # - checks that correct part of document is signed
-    # - checks that correct part of document is signed with correct signature
-
-  describe 'IdentityProvider', ->
-    it.skip 'validates configuration passed to constructor (urls, certificate)', (done) ->
-      assert false
-      done()
-
   describe 'ServiceProvider', ->
     it 'can be constructed', (done) ->
       sp = new saml2.ServiceProvider 'private_key', 'cert'
-      done()
-
-    it.skip 'validates configuration given to constructor (private key, certificate)', (done) ->
-      assert false
       done()
 
     it 'can create login url', (done) ->
@@ -240,21 +202,3 @@ describe 'saml2', ->
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
-    login_url_errors =
-      'assert URL not given':'response1'
-      'not HTTPS':'response2'
-
-    _.each login_url_errors, (response_text, error_type) ->
-      it.skip "returns correct 'login_url' error for #{error_type} ", (done) ->
-        sp = new saml2.ServiceProvider 'private_key', 'cert'
-        idp = new saml2.IdentityProvider 'login_url', 'logout_url', 'other_service_cert'
-        assert false
-        done()
-
-    assert_errors =
-      'error1' : 'response1'
-
-    _.each assert_errors, (response_text, error_type) ->
-      it.skip "returns correct 'assert' error for #{error_type} ", (done) ->
-        assert false
-        done()
