@@ -39,8 +39,8 @@ describe 'saml2', ->
 
   describe 'create_metadata', ->
     it 'contains expected fields', ->
-      cert = fs.readFileSync "#{__dirname}/data/test.crt"
-      cert2 = fs.readFileSync "#{__dirname}/data/test2.crt"
+      cert = get_test_file 'test.crt'
+      cert2 = get_test_file 'test2.crt'
 
       metadata = saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2
       dom = (new xmldom.DOMParser()).parseFromString metadata
@@ -132,7 +132,7 @@ describe 'saml2', ->
       assert.equal session_index, '_3'
 
   describe 'parse_assertion_attributes', ->
-    it 'correctled parses assertion attributes', ->
+    it 'correctly parses assertion attributes', ->
       expected_attributes =
           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]

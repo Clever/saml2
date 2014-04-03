@@ -49,6 +49,7 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
         ]
   .end()
 
+# Creates a LogoutRequest and returns it as a string of xml.
 create_logout_request = (issuer, name_id, session_index) ->
   xmlbuilder.create
     'samlp:LogoutRequest':
@@ -155,6 +156,8 @@ get_name_id = (dom) ->
 
   nameid[0].firstChild?.data
 
+# Takes in an xml @dom of an object containing a SAML Assertion and returns the SessionIndex. It will throw an error
+# if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid.
 get_session_index = (dom) ->
   assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
