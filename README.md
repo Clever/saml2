@@ -6,6 +6,12 @@ Takes care of the complexities of the SAML protocol and provides an easy interfa
 
 This is exposed as both a series of functions that implement each step of the SAML protocol, and an Express middleware that creates the necessary endpoints for the metadata, the login and the assertion.
 
+## Installation
+
+```bash
+  npm install saml2-js
+```
+
 ## Expected Usage
 
 Include the SAML library.
