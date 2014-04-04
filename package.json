@@ -4,15 +4,6 @@
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "main": "index.js",
-  "directories": {
-    "test": "test",
-    "xmlbuilder": "~2.1.0",
-    "xmldom": "~0.1.19",
-    "xml-encryption": "~0.4.0",
-    "xml-crypto": "0.0.22",
-    "xml2js": "~0.4.1",
-    "underscore": "~1.6.0"
-  },
   "scripts": {
     "test": "make -Br test",
     "test-cov": "make -Br test-cov",
@@ -39,7 +30,8 @@
     "xmlbuilder": "~2.1.0",
     "xml-crypto": "0.0.22",
     "xmldom": "~0.1.19",
-    "xml-encryption": "~0.4.0",
-    "async": "~0.2.10"
+    "xml-encryption": "~0.6.0",
+    "async": "~0.2.10",
+    "async-ext": "~0.1.4"
   }
 }
