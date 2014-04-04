@@ -6,14 +6,6 @@ Takes care of the complexities of the SAML protocol and provides an easy interfa
 
 This is exposed as both a series of functions that implement each step of the SAML protocol, and an Express middleware that creates the necessary endpoints for the metadata, the login and the assertion.
 
-## Pre-requisites
-
-You'll need to create a private and public key.
-
-```
-TODO: Describe how
-```
-
 ## Expected Usage
 
 Include the SAML library.
@@ -102,7 +94,3 @@ Library users will need to implement the URL endpoints. For example, express end
 - https://github.com/bergie/passport-saml
 - https://github.com/auth0/node-saml
 - https://github.com/auth0/passport-wsfed-saml2
-
-## Notes
-
-remote_metadata: 'https://cleverad.ops.clever.com/FederationMetadata/2007-06/FederationMetadata.xml'
