@@ -4,6 +4,9 @@
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "main": "index.js",
+  "engines": {
+    "node": ">=0.10.x"
+  },
   "scripts": {
     "test": "make -Br test",
     "test-cov": "make -Br test-cov",
