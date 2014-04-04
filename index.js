@@ -1,7 +1,2 @@
-require('coffee-script');
-
-if (process.env.TEST_COV_CLEVERJS) {
-  module.exports = require('./lib-js-cov/saml2');
-} else {
-  module.exports = require('./lib/saml2');
-}
+var path = __dirname + '/' + (process.env.TEST_COV_SAML2 ? 'lib-js-cov' : 'lib-js') + '/saml2';
+module.exports = require(path);
