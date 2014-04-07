@@ -237,17 +237,29 @@ module.exports.ServiceProvider =
         cb null, url.format(uri), id
 
     # Returns user object, if the login attempt was valid.
-    assert: (identity_provider, request_body, cb) ->
+    assert: (identity_provider, request_body, get_request, cb) ->
       unless request_body?.SAMLResponse?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse.")
 
-      saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
+      if _.isFunction(get_request) and not cb?
+        cb = get_request
+        get_request = false
+
+      saml_response = null
       decrypted_assertion = null
 
       user = {}
 
       async.waterfall [
-        (cb_wf) -> async.lift(parse_response_header) saml_response, cb_wf
+        (cb_wf) ->
+          raw = new Buffer(request_body.SAMLResponse, 'base64')
+          # For GET requests, it's necessary to inflate the response before parsing it.
+          if (get_request)
+            return zlib.inflateRaw raw, cb_wf
+          setImmediate cb_wf, null, raw
+        (response, cb_wf) ->
+          saml_response = (new xmldom.DOMParser()).parseFromString(response.toString())
+          async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
           user = { response_header }
           cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
