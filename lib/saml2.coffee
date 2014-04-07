@@ -273,7 +273,6 @@ module.exports.ServiceProvider =
         uri = url.parse identity_provider.sso_login_url
         uri.query =
           SAMLRequest: deflated.toString 'base64'
-        console.log url.format(uri)
         cb null, url.format(uri), id
 
     # Returns user object, if the login attempt was valid.

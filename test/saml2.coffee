@@ -150,30 +150,32 @@ describe 'saml2', ->
       sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
 
-      sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, user) ->
+      sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, response) ->
         assert not err?, "Got error: #{err}"
 
-        expected_user =
+        expected_response =
           response_header:
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
-          name_id: 'tstudent'
-          session_index: '_3'
-          given_name: 'Test',
-          email: 'tstudent@example.com',
-          ppid: 'tstudent',
-          group: 'CN=Students,CN=Users,DC=idp,DC=example,DC=com',
-          surname: 'Student',
-          common_name: 'Test Student',
-          attributes:
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
-            'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
-            'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+          type: 'authn_response'
+          user:
+            name_id: 'tstudent'
+            session_index: '_3'
+            given_name: 'Test',
+            email: 'tstudent@example.com',
+            ppid: 'tstudent',
+            group: 'CN=Students,CN=Users,DC=idp,DC=example,DC=com',
+            surname: 'Student',
+            common_name: 'Test Student',
+            attributes:
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
+              'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
+              'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
 
-        assert.deepEqual user, expected_user
+        assert.deepEqual response, expected_response
         done()
 
     it 'errors if passed invalid data', (done) ->
