@@ -50,7 +50,7 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
   .end()
 
 # Creates a LogoutRequest and returns it as a string of xml.
-create_logout_request = (issuer, name_id, session_index) ->
+create_logout_request = (issuer, name_id, session_index, destination) ->
   xmlbuilder.create
     'samlp:LogoutRequest':
       '@xmlns:samlp': 'urn:oasis:names:tc:SAML:2.0:protocol'
@@ -58,6 +58,7 @@ create_logout_request = (issuer, name_id, session_index) ->
       '@ID': '_' + crypto.randomBytes(21).toString('hex')
       '@Version': '2.0'
       '@IssueInstant': (new Date()).toISOString()
+      '@Destination': destination
       'saml:Issuer': issuer
       'saml:NameID': name_id
       'samlp:SessionIndex': session_index
