@@ -64,6 +64,19 @@ create_logout_request = (issuer, name_id, session_index, destination) ->
       'samlp:SessionIndex': session_index
   .end()
 
+# Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA1. It returns the
+# result as an object containing the query parameters.
+sign_get_request = (saml_request, private_key) ->
+  data = "SAMLRequest=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2000/09/xmldsig#rsa-sha1')
+  sign = crypto.createSign 'RSA-SHA1'
+  sign.update(data)
+
+  {
+    SAMLRequest: saml_request
+    SigAlg: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+    Signature: sign.sign(private_key, 'base64')
+  }
+
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
   cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
@@ -283,13 +296,12 @@ module.exports.ServiceProvider =
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
-    create_logout_url: (user, identity_provider, cb) ->
-      xml = create_logout_request @issuer, user.name_id, user.session_index
-      zlib.deflateRaw xml, (err, deflated) ->
+    create_logout_url: (user, identity_provider, cb) =>
+      xml = create_logout_request @issuer, user.name_id, user.session_index, identity_provider.sso_logout_url
+      zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_login_url
-        uri.query =
-          SAMLRequest: deflated.toString 'base64'
+        uri = url.parse identity_provider.sso_logout_url
+        uri.query = sign_get_request deflated.toString('base64'), @private_key
         cb null, url.format(uri)
 
     # Returns XML metadata, used during initial SAML configuration
