@@ -143,6 +143,8 @@ decrypt_assertion = (dom, private_key, cb) ->
 # appear to be valid.
 parse_response_header = (dom) ->
   response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
+  if response.length is 0
+    response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'LogoutResponse')
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
   response_header = {}
@@ -235,6 +237,29 @@ pretty_assertion_attributes = (assertion_attributes) ->
     .object()
     .value()
 
+parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
+  user = {}
+  decrypted_assertion = null
+
+  async.waterfall [
+    (cb_wf) ->
+      decrypt_assertion saml_response, sp_private_key, cb_wf
+    (result, cb_wf) ->
+      decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
+      check_saml_signature result, idp_certificate, cb_wf
+    (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
+    (name_id, cb_wf) ->
+      user.name_id = name_id
+      async.lift(get_session_index) decrypted_assertion, cb_wf
+    (session_index, cb_wf) ->
+      user.session_index = session_index
+      async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
+    (assertion_attributes, cb_wf) ->
+      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+      user = _.extend user, attributes: assertion_attributes
+      cb_wf null, { user }
+  ], cb
+
 module.exports.ServiceProvider =
   class ServiceProvider
     constructor: (@issuer, @private_key, @certificate) ->
@@ -248,6 +273,7 @@ module.exports.ServiceProvider =
         uri = url.parse identity_provider.sso_login_url
         uri.query =
           SAMLRequest: deflated.toString 'base64'
+        console.log url.format(uri)
         cb null, url.format(uri), id
 
     # Returns user object, if the login attempt was valid.
@@ -262,7 +288,7 @@ module.exports.ServiceProvider =
       saml_response = null
       decrypted_assertion = null
 
-      user = {}
+      response = {}
 
       async.waterfall [
         (cb_wf) ->
@@ -271,27 +297,22 @@ module.exports.ServiceProvider =
           if (get_request)
             return zlib.inflateRaw raw, cb_wf
           setImmediate cb_wf, null, raw
-        (response, cb_wf) ->
-          saml_response = (new xmldom.DOMParser()).parseFromString(response.toString())
+        (response_buffer, cb_wf) ->
+          saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
-          user = { response_header }
+          response = { response_header }
           cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
-          decrypt_assertion saml_response, @private_key, cb_wf
+          switch
+            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response').length is 1
+              response.type = 'authn_response'
+              parse_authn_response saml_response, @private_key, identity_provider.certificate, cb_wf
+            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'LogoutResponse').length is 1
+              response.type = 'logout_response'
+              setImmediate cb_wf, null, {}
         (result, cb_wf) ->
-          decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-          check_saml_signature result, identity_provider.certificate, cb_wf
-        (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
-        (name_id, cb_wf) ->
-          user.name_id = name_id
-          async.lift(get_session_index) decrypted_assertion, cb_wf
-        (session_index, cb_wf) ->
-          user.session_index = session_index
-          async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
-        (assertion_attributes, cb_wf) ->
-          user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-          user = _.extend user, attributes: assertion_attributes
-          cb_wf null, user
+          _.extend response, result
+          cb_wf null, response
       ], cb
 
     # -- Optional
