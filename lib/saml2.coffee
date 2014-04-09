@@ -237,6 +237,9 @@ pretty_assertion_attributes = (assertion_attributes) ->
     .object()
     .value()
 
+# Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
+# issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
+# is invalid.
 parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
   user = {}
   decrypted_assertion = null
@@ -275,7 +278,7 @@ module.exports.ServiceProvider =
           SAMLRequest: deflated.toString 'base64'
         cb null, url.format(uri), id
 
-    # Returns user object, if the login attempt was valid.
+    # Returns an object containing the parsed response.
     assert: (identity_provider, request_body, get_request, cb) ->
       unless request_body?.SAMLResponse?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse.")
