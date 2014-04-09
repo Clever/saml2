@@ -224,7 +224,6 @@ describe 'saml2', ->
       ], (err, logout_url) ->
         assert not err?, "Error creating logout URL: #{err}"
         parsed_url = url.parse logout_url, true
-        saml_request = parsed_url.query?.SAMLRequest?
-        assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
         assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
         done()

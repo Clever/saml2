@@ -142,9 +142,9 @@ decrypt_assertion = (dom, private_key, cb) ->
 # InResponseTo attributes of the Response if present. It will throw an error if the Response is missing or does not
 # appear to be valid.
 parse_response_header = (dom) ->
-  response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
-  if response.length is 0
-    response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'LogoutResponse')
+  for response_type in ['Response', 'LogoutResponse']
+    response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', response_type)
+    break if response.length > 0
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
   response_header = {}
@@ -279,13 +279,11 @@ module.exports.ServiceProvider =
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
-    assert: (identity_provider, request_body, get_request, cb) ->
+    assert: (identity_provider, request_body, get_request..., cb) ->
+      get_request =  get_request[0]
+
       unless request_body?.SAMLResponse?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse.")
-
-      if _.isFunction(get_request) and not cb?
-        cb = get_request
-        get_request = false
 
       saml_response = null
       decrypted_assertion = null
