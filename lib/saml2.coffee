@@ -50,7 +50,7 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
   .end()
 
 # Creates a LogoutRequest and returns it as a string of xml.
-create_logout_request = (issuer, name_id, session_index) ->
+create_logout_request = (issuer, name_id, session_index, destination) ->
   xmlbuilder.create
     'samlp:LogoutRequest':
       '@xmlns:samlp': 'urn:oasis:names:tc:SAML:2.0:protocol'
@@ -58,10 +58,24 @@ create_logout_request = (issuer, name_id, session_index) ->
       '@ID': '_' + crypto.randomBytes(21).toString('hex')
       '@Version': '2.0'
       '@IssueInstant': (new Date()).toISOString()
+      '@Destination': destination
       'saml:Issuer': issuer
       'saml:NameID': name_id
       'samlp:SessionIndex': session_index
   .end()
+
+# Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
+# the result as an object containing the query parameters.
+sign_get_request = (saml_request, private_key) ->
+  data = "SAMLRequest=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
+  sign = crypto.createSign 'RSA-SHA256'
+  sign.update(data)
+
+  {
+    SAMLRequest: saml_request
+    SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+    Signature: sign.sign(private_key, 'base64')
+  }
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
@@ -128,7 +142,9 @@ decrypt_assertion = (dom, private_key, cb) ->
 # InResponseTo attributes of the Response if present. It will throw an error if the Response is missing or does not
 # appear to be valid.
 parse_response_header = (dom) ->
-  response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response')
+  for response_type in ['Response', 'LogoutResponse']
+    response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', response_type)
+    break if response.length > 0
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
   response_header = {}
@@ -221,6 +237,32 @@ pretty_assertion_attributes = (assertion_attributes) ->
     .object()
     .value()
 
+# Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
+# issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
+# is invalid.
+parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
+  user = {}
+  decrypted_assertion = null
+
+  async.waterfall [
+    (cb_wf) ->
+      decrypt_assertion saml_response, sp_private_key, cb_wf
+    (result, cb_wf) ->
+      decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
+      check_saml_signature result, idp_certificate, cb_wf
+    (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
+    (name_id, cb_wf) ->
+      user.name_id = name_id
+      async.lift(get_session_index) decrypted_assertion, cb_wf
+    (session_index, cb_wf) ->
+      user.session_index = session_index
+      async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
+    (assertion_attributes, cb_wf) ->
+      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+      user = _.extend user, attributes: assertion_attributes
+      cb_wf null, { user }
+  ], cb
+
 module.exports.ServiceProvider =
   class ServiceProvider
     constructor: (@issuer, @private_key, @certificate) ->
@@ -236,52 +278,56 @@ module.exports.ServiceProvider =
           SAMLRequest: deflated.toString 'base64'
         cb null, url.format(uri), id
 
-    # Returns user object, if the login attempt was valid.
-    assert: (identity_provider, request_body, cb) ->
+    # Returns an object containing the parsed response.
+    assert: (identity_provider, request_body, get_request..., cb) ->
+      get_request =  get_request[0]
+
       unless request_body?.SAMLResponse?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse.")
 
-      saml_response = (new xmldom.DOMParser()).parseFromString(new Buffer(request_body.SAMLResponse, 'base64').toString())
+      saml_response = null
       decrypted_assertion = null
 
-      user = {}
+      response = {}
 
       async.waterfall [
-        (cb_wf) -> async.lift(parse_response_header) saml_response, cb_wf
+        (cb_wf) ->
+          raw = new Buffer(request_body.SAMLResponse, 'base64')
+          # For GET requests, it's necessary to inflate the response before parsing it.
+          if (get_request)
+            return zlib.inflateRaw raw, cb_wf
+          setImmediate cb_wf, null, raw
+        (response_buffer, cb_wf) ->
+          saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
+          async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
-          user = { response_header }
+          response = { response_header }
           cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
-          decrypt_assertion saml_response, @private_key, cb_wf
+          switch
+            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response').length is 1
+              response.type = 'authn_response'
+              parse_authn_response saml_response, @private_key, identity_provider.certificate, cb_wf
+            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'LogoutResponse').length is 1
+              response.type = 'logout_response'
+              setImmediate cb_wf, null, {}
         (result, cb_wf) ->
-          decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-          check_saml_signature result, identity_provider.certificate, cb_wf
-        (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
-        (name_id, cb_wf) ->
-          user.name_id = name_id
-          async.lift(get_session_index) decrypted_assertion, cb_wf
-        (session_index, cb_wf) ->
-          user.session_index = session_index
-          async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
-        (assertion_attributes, cb_wf) ->
-          user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-          user = _.extend user, attributes: assertion_attributes
-          cb_wf null, user
+          _.extend response, result
+          cb_wf null, response
       ], cb
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
-    create_logout_url: (user, identity_provider, cb) ->
-      xml = create_logout_request @issuer, user.name_id, user.session_index
-      zlib.deflateRaw xml, (err, deflated) ->
+    create_logout_url: (identity_provider, name_id, session_index, cb) =>
+      xml = create_logout_request @issuer, name_id, session_index, identity_provider.sso_logout_url
+      zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_login_url
-        uri.query =
-          SAMLRequest: deflated.toString 'base64'
+        uri = url.parse identity_provider.sso_logout_url
+        uri.query = sign_get_request deflated.toString('base64'), @private_key
         cb null, url.format(uri)
 
     # Returns XML metadata, used during initial SAML configuration
-    create_metadata: (identity_provider, assert_endpoint, cb) =>
-      create_metadata @issuer, assert_endpoint, @certificate, @certificate, cb
+    create_metadata: (assert_endpoint) =>
+      create_metadata @issuer, assert_endpoint, @certificate, @certificate
 
 module.exports.IdentityProvider =
   class IdentityProvider
@@ -290,6 +336,7 @@ module.exports.IdentityProvider =
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
   module.exports.create_metadata = create_metadata
+  module.exports.sign_get_request = sign_get_request
   module.exports.check_saml_signature = check_saml_signature
   module.exports.check_status_success = check_status_success
   module.exports.decrypt_assertion = decrypt_assertion
