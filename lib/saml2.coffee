@@ -319,8 +319,8 @@ module.exports.ServiceProvider =
 
     # -- Optional
     # Returns a redirect URL, at which a user is logged out.
-    create_logout_url: (user, identity_provider, cb) =>
-      xml = create_logout_request @issuer, user.name_id, user.session_index, identity_provider.sso_logout_url
+    create_logout_url: (identity_provider, name_id, session_index, cb) =>
+      xml = create_logout_request @issuer, name_id, session_index, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_logout_url
@@ -338,6 +338,7 @@ module.exports.IdentityProvider =
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
   module.exports.create_metadata = create_metadata
+  module.exports.sign_get_request = sign_get_request
   module.exports.check_saml_signature = check_saml_signature
   module.exports.check_status_success = check_status_success
   module.exports.decrypt_assertion = decrypt_assertion

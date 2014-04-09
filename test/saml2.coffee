@@ -1,6 +1,7 @@
 _             = require 'underscore'
 assert        = require 'assert'
 async         = require 'async'
+crypto        = require 'crypto'
 fs            = require 'fs'
 saml2         = require "#{__dirname}/../index"
 url           = require 'url'
@@ -53,6 +54,16 @@ describe 'saml2', ->
         _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
           _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
         , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
+
+  describe 'sign_get_request', ->
+    it 'correctly signs a get request', ->
+      signed = saml2.sign_get_request 'TESTMESSAGE', get_test_file("test.pem")
+
+      verifier = crypto.createVerify 'RSA-SHA256'
+      verifier.update 'SAMLRequest=TESTMESSAGE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
+      assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
+      assert signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+      assert signed.SAMLRequest, 'TESTMESSAGE'
 
   describe 'check_saml_signature', ->
     it 'accepts signed xml', (done) ->
@@ -204,3 +215,16 @@ describe 'saml2', ->
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
+    it 'can create logout url', (done) ->
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_url idp, 'name_id', 'session_index', cb_wf
+      ], (err, logout_url) ->
+        assert not err?, "Error creating logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        saml_request = parsed_url.query?.SAMLRequest?
+        assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+        done()
