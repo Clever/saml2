@@ -328,7 +328,7 @@ module.exports.ServiceProvider =
         cb null, url.format(uri)
 
     # Returns XML metadata, used during initial SAML configuration
-    create_metadata: (identity_provider, assert_endpoint) =>
+    create_metadata: (assert_endpoint) =>
       create_metadata @issuer, assert_endpoint, @certificate, @certificate
 
 module.exports.IdentityProvider =
