@@ -64,16 +64,16 @@ create_logout_request = (issuer, name_id, session_index, destination) ->
       'samlp:SessionIndex': session_index
   .end()
 
-# Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA1. It returns the
-# result as an object containing the query parameters.
+# Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
+# the result as an object containing the query parameters.
 sign_get_request = (saml_request, private_key) ->
-  data = "SAMLRequest=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2000/09/xmldsig#rsa-sha1')
-  sign = crypto.createSign 'RSA-SHA1'
+  data = "SAMLRequest=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
+  sign = crypto.createSign 'RSA-SHA256'
   sign.update(data)
 
   {
     SAMLRequest: saml_request
-    SigAlg: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+    SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
     Signature: sign.sign(private_key, 'base64')
   }
 
