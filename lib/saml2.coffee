@@ -64,6 +64,12 @@ create_logout_request = (issuer, name_id, session_index, destination) ->
       'samlp:SessionIndex': session_index
   .end()
 
+# Takes a base64 encoded @key and returns it formatted with newlines and a PEM header according to @type. If it already
+# has a PEM header, it will just return the original key.
+format_pem = (key, type) ->
+  return key if (/-----BEGIN [0-9A-Z ]+-----[^-]*-----END [0-9A-Z ]+-----/g.exec(key))?
+  return "-----BEGIN #{type.toUpperCase()}-----\n" + key.match(/.{1,64}/g).join("\n") + "\n-----END #{type.toUpperCase()}-----"
+
 # Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
 # the result as an object containing the query parameters.
 sign_get_request = (saml_request, private_key) ->
@@ -74,13 +80,14 @@ sign_get_request = (saml_request, private_key) ->
   {
     SAMLRequest: saml_request
     SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-    Signature: sign.sign(private_key, 'base64')
+    Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
   }
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
   cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
-  throw new Error('Invalid Certificate') if cert_data?.length is 0
+  cert_data = if cert_data? then cert_data[1] else certificate
+  throw new Error('Invalid Certificate') unless cert_data?
 
   {
     '@use': use
@@ -88,7 +95,7 @@ certificate_to_keyinfo = (use, certificate) ->
       '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
       'ds:X509Data':
         'ds:X509Certificate':
-          cert_data[1].replace(/[\r\n|\n]/g, '')
+          cert_data.replace(/[\r\n|\n]/g, '')
   }
 
 # This function calls @cb with no error if an XML document is signed with the provided cert. This is NOT sufficient for
@@ -100,7 +107,7 @@ check_saml_signature = (xml, certificate, cb) ->
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return cb new Error("Expected 1 Signature; found #{signature.length}") unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = getKey: -> certificate
+  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
   return cb null if sig.checkSignature(xml)
   cb new Error("SAML Assertion signature check failed!")
@@ -134,7 +141,7 @@ decrypt_assertion = (dom, private_key, cb) ->
     encrypted_data = encrypted_assertion[0].getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')
     return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.") unless encrypted_data.length is 1
 
-    xmlenc.decrypt encrypted_data[0].toString(), (key: private_key), cb
+    xmlenc.decrypt encrypted_data[0].toString(), (key: format_pem(private_key, 'PRIVATE KEY')), cb
   catch err
     cb new Error("Decrypt failed: #{util.inspect err}")
 
@@ -336,6 +343,7 @@ module.exports.IdentityProvider =
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
   module.exports.create_metadata = create_metadata
+  module.exports.format_pem = format_pem
   module.exports.sign_get_request = sign_get_request
   module.exports.check_saml_signature = check_saml_signature
   module.exports.check_status_success = check_status_success
