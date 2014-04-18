@@ -55,6 +55,16 @@ describe 'saml2', ->
           _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
         , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
 
+  describe 'format_pem', ->
+    it 'formats an unformatted private key', ->
+      raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
+      formatted_key = saml2.format_pem raw_private_key, 'PRIVATE KEY'
+      assert.equal formatted_key.trim(), get_test_file("test.pem").trim()
+
+    it 'does not change an already formatted private key', ->
+      formatted_key = saml2.format_pem get_test_file("test.pem"), 'PRIVATE KEY'
+      assert.equal formatted_key, get_test_file("test.pem")
+
   describe 'sign_get_request', ->
     it 'correctly signs a get request', ->
       signed = saml2.sign_get_request 'TESTMESSAGE', get_test_file("test.pem")
