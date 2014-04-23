@@ -117,7 +117,6 @@ check_saml_signature = (xml, certificate, cb) ->
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
   return cb null if sig.checkSignature(xml)
-  return cb null
   cb new Error("SAML Assertion signature check failed!")
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
