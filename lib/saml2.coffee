@@ -313,7 +313,6 @@ module.exports.ServiceProvider =
           setImmediate cb_wf, null, raw
         (response_buffer, cb_wf) ->
           saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
-          console.log response_buffer.toString()
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
           response = { response_header }
