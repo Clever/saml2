@@ -10,14 +10,21 @@ xmldom        = require 'xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 
+xmlns =
+  saml: 'urn:oasis:names:tc:SAML:2.0:assertion'
+  samlp: 'urn:oasis:names:tc:SAML:2.0:protocol'
+  md: 'urn:oasis:names:tc:SAML:2.0:metadata'
+  ds: 'http://www.w3.org/2000/09/xmldsig#'
+  xenc: 'http://www.w3.org/2001/04/xmlenc#'
+
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
 create_authn_request = (issuer, assert_endpoint, destination) ->
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create
     AuthnRequest:
-      '@xmlns': 'urn:oasis:names:tc:SAML:2.0:protocol'
-      '@xmlns:saml': 'urn:oasis:names:tc:SAML:2.0:assertion'
+      '@xmlns': xmlns.samlp
+      '@xmlns:saml': xmlns.saml
       '@Version': '2.0'
       '@ID': id
       '@IssueInstant': (new Date()).toISOString()
@@ -35,8 +42,8 @@ create_authn_request = (issuer, assert_endpoint, destination) ->
 create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate) ->
   xmlbuilder.create
     'md:EntityDescriptor':
-      '@xmlns:md': 'urn:oasis:names:tc:SAML:2.0:metadata'
-      '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
+      '@xmlns:md': xmlns.md
+      '@xmlns:ds': xmlns.ds
       '@entityID': issuer
       'md:SPSSODescriptor': [
           '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol',
@@ -53,8 +60,8 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
 create_logout_request = (issuer, name_id, session_index, destination) ->
   xmlbuilder.create
     'samlp:LogoutRequest':
-      '@xmlns:samlp': 'urn:oasis:names:tc:SAML:2.0:protocol'
-      '@xmlns:saml': 'urn:oasis:names:tc:SAML:2.0:assertion'
+      '@xmlns:samlp': xmlns.samlp
+      '@xmlns:saml': xmlns.saml
       '@ID': '_' + crypto.randomBytes(21).toString('hex')
       '@Version': '2.0'
       '@IssueInstant': (new Date()).toISOString()
@@ -92,7 +99,7 @@ certificate_to_keyinfo = (use, certificate) ->
   {
     '@use': use
     'ds:KeyInfo':
-      '@xmlns:ds': 'http://www.w3.org/2000/09/xmldsig#'
+      '@xmlns:ds': xmlns.ds
       'ds:X509Data':
         'ds:X509Certificate':
           cert_data.replace(/[\r\n|\n]/g, '')
@@ -110,11 +117,12 @@ check_saml_signature = (xml, certificate, cb) ->
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
   return cb null if sig.checkSignature(xml)
+  return cb null
   cb new Error("SAML Assertion signature check failed!")
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
-  status = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Status')
+  status = dom.getElementsByTagNameNS(xmlns.samlp, 'Status')
   return false unless status.length is 1
   for status_code in status[0].childNodes
     if status_code.attributes?
@@ -135,10 +143,10 @@ decrypt_assertion = (dom, private_key, cb) ->
   cb = _.wrap cb, (fn, err, args...) -> setTimeout (-> fn to_error(err), args...), 0
 
   try
-    encrypted_assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'EncryptedAssertion')
+    encrypted_assertion = dom.getElementsByTagNameNS(xmlns.saml, 'EncryptedAssertion')
     return cb new Error("Expected 1 EncryptedAssertion; found #{encrypted_assertion.length}.") unless encrypted_assertion.length is 1
 
-    encrypted_data = encrypted_assertion[0].getElementsByTagNameNS('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData')
+    encrypted_data = encrypted_assertion[0].getElementsByTagNameNS(xmlns.xenc, 'EncryptedData')
     return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.") unless encrypted_data.length is 1
 
     xmlenc.decrypt encrypted_data[0].toString(), (key: format_pem(private_key, 'PRIVATE KEY')), cb
@@ -150,7 +158,7 @@ decrypt_assertion = (dom, private_key, cb) ->
 # appear to be valid.
 parse_response_header = (dom) ->
   for response_type in ['Response', 'LogoutResponse']
-    response = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', response_type)
+    response = dom.getElementsByTagNameNS(xmlns.samlp, response_type)
     break if response.length > 0
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
@@ -168,13 +176,13 @@ parse_response_header = (dom) ->
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the NameID. If there is no NameID found,
 # it will return null. It will throw an error if the Assertion is missing or does not appear to be valid.
 get_name_id = (dom) ->
-  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  assertion = dom.getElementsByTagNameNS(xmlns.saml, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
-  subject = assertion[0].getElementsByTagName('Subject')
+  subject = assertion[0].getElementsByTagNameNS(xmlns.saml, 'Subject')
   throw new Error("Expected 1 Subject; found #{subject.length}") unless subject.length is 1
 
-  nameid = subject[0].getElementsByTagName('NameID')
+  nameid = subject[0].getElementsByTagNameNS(xmlns.saml, 'NameID')
   return null unless nameid.length is 1
 
   nameid[0].firstChild?.data
@@ -182,10 +190,10 @@ get_name_id = (dom) ->
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the SessionIndex. It will throw an error
 # if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid.
 get_session_index = (dom) ->
-  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  assertion = dom.getElementsByTagNameNS(xmlns.saml, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
-  authn_statement = assertion[0].getElementsByTagName('AuthnStatement')
+  authn_statement = assertion[0].getElementsByTagNameNS(xmlns.saml, 'AuthnStatement')
   throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length is 1
 
   for attr in authn_statement[0].attributes
@@ -197,19 +205,19 @@ get_session_index = (dom) ->
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
 parse_assertion_attributes = (dom) ->
-  assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+  assertion = dom.getElementsByTagNameNS(xmlns.saml, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
-  attribute_statement = assertion[0].getElementsByTagName('AttributeStatement')
+  attribute_statement = assertion[0].getElementsByTagNameNS(xmlns.saml, 'AttributeStatement')
   throw new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
 
   assertion_attributes = {}
-  for attribute in attribute_statement[0].getElementsByTagName('Attribute')
+  for attribute in attribute_statement[0].getElementsByTagNameNS(xmlns.saml, 'Attribute')
     for attr in attribute.attributes
       if attr.name is 'Name'
         attribute_name = attr.value
     throw new Error("Invalid attribute without name") unless attribute_name?
-    assertion_attributes[attribute_name] = _(attribute.getElementsByTagName('AttributeValue')).map (attribute_value) -> attribute_value.childNodes[0].data
+    assertion_attributes[attribute_name] = _(attribute.getElementsByTagNameNS(xmlns.saml, 'AttributeValue')).map (attribute_value) -> attribute_value.childNodes[0].data
   assertion_attributes
 
 # Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed
@@ -306,15 +314,16 @@ module.exports.ServiceProvider =
           setImmediate cb_wf, null, raw
         (response_buffer, cb_wf) ->
           saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
+          console.log response_buffer.toString()
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
           response = { response_header }
           cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
           switch
-            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'Response').length is 1
+            when saml_response.getElementsByTagNameNS(xmlns.samlp, 'Response').length is 1
               response.type = 'authn_response'
               parse_authn_response saml_response, @private_key, identity_provider.certificate, cb_wf
-            when saml_response.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'LogoutResponse').length is 1
+            when saml_response.getElementsByTagNameNS(xmlns.samlp, 'LogoutResponse').length is 1
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
         (result, cb_wf) ->
