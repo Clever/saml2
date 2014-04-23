@@ -147,6 +147,10 @@ describe 'saml2', ->
       name_id = saml2.get_name_id dom_from_test_file('good_assertion.xml')
       assert.equal name_id, 'tstudent'
 
+    it 'parses assertions with explicit namespaces', ->
+      name_id = saml2.get_name_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
+      assert.equal name_id, 'tstudent'
+
   describe 'get_session_index', ->
     it 'gets the correct session index', ->
       session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')

@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_3" IssueInstant="2014-03-12T21:35:05.392Z" Version="2.0">
+  <saml:Issuer>http://idp.example.com/metadata.xml</saml:Issuer>
+  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+    <ds:SignedInfo>
+      <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+      <ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+      <ds:Reference URI="">
+        <ds:Transforms>
+          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+        </ds:Transforms>
+        <ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+        <ds:DigestValue>bzIFJU/QWpxqY/8wYIi1MhtaIYY=</ds:DigestValue>
+      </ds:Reference>
+    </ds:SignedInfo>
+    <ds:SignatureValue>LUAuLKGIAyGcMldwk2gTbyrcrLRZhJZkfK/PgxmHRxJ3lI+xn1A1n8RvHV8OWhFCG7sdTuSEDcqHN6nBQpZZaJ18qIkupV5vwPm3Mu6HFYSKAOrn245sjcjFCG9lJgxOiyeozE8QZ3FNeLnMYuSl7zB9nmjFQJMcHxmrVoCINjbokzjpNiXw56jUqlLJ+kT9ToKjHgcjChlJX75yYSuv+JT8s1UBT3PM7KoqTl97/KS2y7NQR+3hm9vk8uzcrrXgqr7WnizS17FG9q+ivic7w04F/S+yT3FVP5s0TCuck7ER5cYxYEzh+YWF6T7Ar0urn/2gfPMZ32l3tm0KLNaSMw==</ds:SignatureValue>
+    <ds:KeyInfo>
+      <ds:KeyName/>
+    </ds:KeyInfo>
+  </ds:Signature>
+  <saml:Subject>
+    <saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient">tstudent</saml:NameID>
+    <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+      <saml:SubjectConfirmationData InResponseTo="_4" NotOnOrAfter="2014-03-12T21:40:05.392Z" Recipient="https://sp.example.com/assert"/>
+    </saml:SubjectConfirmation>
+  </saml:Subject>
+  <saml:Conditions NotBefore="2014-03-12T21:35:05.387Z" NotOnOrAfter="2014-03-12T22:35:05.387Z">
+    <saml:AudienceRestriction>
+      <saml:Audience>https://sp.example.com/metadata.xml</saml:Audience>
+    </saml:AudienceRestriction>
+  </saml:Conditions>
+  <saml:AttributeStatement>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname">
+      <saml:AttributeValue>Test</saml:AttributeValue>
+    </saml:Attribute>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress">
+      <saml:AttributeValue>tstudent@example.com</saml:AttributeValue>
+    </saml:Attribute>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier">
+      <saml:AttributeValue>tstudent</saml:AttributeValue>
+    </saml:Attribute>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/claims/Group">
+      <saml:AttributeValue>CN=Students,CN=Users,DC=idp,DC=example,DC=com</saml:AttributeValue>
+    </saml:Attribute>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname">
+      <saml:AttributeValue>Student</saml:AttributeValue>
+    </saml:Attribute>
+    <saml:Attribute Name="http://schemas.xmlsoap.org/claims/CommonName">
+      <saml:AttributeValue>Test Student</saml:AttributeValue>
+    </saml:Attribute>
+  </saml:AttributeStatement>
+  <saml:AuthnStatement AuthnInstant="2014-03-12T21:35:05.354Z" SessionIndex="_3">
+    <saml:AuthnContext>
+      <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef>
+    </saml:AuthnContext>
+  </saml:AuthnStatement>
+</saml:Assertion>
