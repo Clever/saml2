@@ -253,7 +253,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
 # issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
 # is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
+parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
   user = {}
   decrypted_assertion = null
 
@@ -262,7 +262,7 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
       decrypt_assertion saml_response, sp_private_key, cb_wf
     (result, cb_wf) ->
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-      unless check_saml_signature result, idp_certificate
+      unless _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
         return cb_wf new Error("SAML Assertion signature check failed!")
       cb_wf null
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
@@ -321,7 +321,7 @@ module.exports.ServiceProvider =
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificate, cb_wf
+              parse_authn_response saml_response, @private_key, identity_provider.certificates, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
@@ -346,7 +346,8 @@ module.exports.ServiceProvider =
 
 module.exports.IdentityProvider =
   class IdentityProvider
-    constructor: (@sso_login_url, @sso_logout_url, @certificate) ->
+    constructor: (@sso_login_url, @sso_logout_url, @certificates) ->
+      @certificates = [ @certificates ] unless _.isArray(@certificates)
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request

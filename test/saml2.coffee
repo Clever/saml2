@@ -167,7 +167,7 @@ describe 'saml2', ->
   describe 'assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->
       sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', [ get_test_file('test.crt'), get_test_file('test2.crt') ]
 
       sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, response) ->
         assert not err?, "Got error: #{err}"
