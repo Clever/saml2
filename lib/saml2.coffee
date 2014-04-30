@@ -112,12 +112,11 @@ check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return cb new Error("Expected 1 Signature; found #{signature.length}") unless signature.length is 1
+  return false unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
-  return cb null if sig.checkSignature(xml)
-  cb new Error("SAML Assertion signature check failed!")
+  return sig.checkSignature(xml)
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
@@ -263,7 +262,9 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
       decrypt_assertion saml_response, sp_private_key, cb_wf
     (result, cb_wf) ->
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-      check_saml_signature result, idp_certificate, cb_wf
+      unless check_saml_signature result, idp_certificate
+        return cb_wf new Error("SAML Assertion signature check failed!")
+      cb_wf null
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
     (name_id, cb_wf) ->
       user.name_id = name_id
