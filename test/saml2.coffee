@@ -76,20 +76,14 @@ describe 'saml2', ->
       assert signed.SAMLRequest, 'TESTMESSAGE'
 
   describe 'check_saml_signature', ->
-    it 'accepts signed xml', (done) ->
-      saml2.check_saml_signature get_test_file("good_assertion.xml"), get_test_file("test.crt"), (err) ->
-        assert not err?, "Got error: #{err}"
-        done()
+    it 'accepts signed xml', ->
+      assert saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
 
-    it 'rejects xml without a signature', (done) ->
-      saml2.check_saml_signature get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"), (err) ->
-        assert (err instanceof Error), "Did not get expected error."
-        done()
+    it 'rejects xml without a signature', ->
+      assert.equal false, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
 
-    it 'rejects xml with an invalid signature', (done) ->
-      saml2.check_saml_signature get_test_file("good_assertion.xml"), get_test_file("test2.crt"), (err) ->
-        assert (err instanceof Error), "Did not get expected error."
-        done()
+    it 'rejects xml with an invalid signature', ->
+      assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
   describe 'check_status_success', =>
     it 'accepts a valid success status', =>
@@ -173,7 +167,7 @@ describe 'saml2', ->
   describe 'assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->
       sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', [ get_test_file('test.crt'), get_test_file('test2.crt') ]
 
       sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, response) ->
         assert not err?, "Got error: #{err}"

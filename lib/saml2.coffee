@@ -112,12 +112,11 @@ check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, "/*/*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return cb new Error("Expected 1 Signature; found #{signature.length}") unless signature.length is 1
+  return false unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
-  return cb null if sig.checkSignature(xml)
-  cb new Error("SAML Assertion signature check failed!")
+  return sig.checkSignature xml
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
@@ -254,7 +253,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
 # issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
 # is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
+parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
   user = {}
   decrypted_assertion = null
 
@@ -263,7 +262,9 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificate, cb) ->
       decrypt_assertion saml_response, sp_private_key, cb_wf
     (result, cb_wf) ->
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-      check_saml_signature result, idp_certificate, cb_wf
+      unless _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
+        return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
+      cb_wf null
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
     (name_id, cb_wf) ->
       user.name_id = name_id
@@ -320,7 +321,7 @@ module.exports.ServiceProvider =
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificate, cb_wf
+              parse_authn_response saml_response, @private_key, identity_provider.certificates, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
@@ -345,7 +346,8 @@ module.exports.ServiceProvider =
 
 module.exports.IdentityProvider =
   class IdentityProvider
-    constructor: (@sso_login_url, @sso_logout_url, @certificate) ->
+    constructor: (@sso_login_url, @sso_logout_url, @certificates) ->
+      @certificates = [ @certificates ] unless _.isArray(@certificates)
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
