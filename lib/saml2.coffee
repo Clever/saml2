@@ -116,7 +116,7 @@ check_saml_signature = (xml, certificate, cb) ->
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
-  return sig.checkSignature(xml)
+  return sig.checkSignature xml
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
@@ -263,7 +263,7 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
     (result, cb_wf) ->
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
       unless _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
-        return cb_wf new Error("SAML Assertion signature check failed!")
+        return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
       cb_wf null
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
     (name_id, cb_wf) ->
