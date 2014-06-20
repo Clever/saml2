@@ -53,6 +53,9 @@ create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_cert
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
             '@Location': assert_endpoint
             '@index': '0'
+          'md:SingleLogoutService':
+            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+            '@Location': assert_endpoint
         ]
   .end()
 
