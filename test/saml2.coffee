@@ -55,6 +55,11 @@ describe 'saml2', ->
           _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
         , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
 
+      assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'SingleLogoutService')).some((assertion) ->
+        _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect') and
+          _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
+        , "Expected to find a SingleLogoutService with redirect binding and location 'https://sp.example.com/assert'"
+
   describe 'format_pem', ->
     it 'formats an unformatted private key', ->
       raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
