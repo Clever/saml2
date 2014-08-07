@@ -28,13 +28,14 @@
     "coffee-script": "~1.7.1"
   },
   "dependencies": {
+    "async": "~0.2.10",
+    "async-ext": "~0.1.4",
+    "debug": "^1.0.4",
     "underscore": "~1.6.0",
+    "xml-crypto": "0.0.22",
+    "xml-encryption": "~0.6.0",
     "xml2js": "~0.4.1",
     "xmlbuilder": "~2.1.0",
-    "xml-crypto": "0.0.22",
-    "xmldom": "~0.1.19",
-    "xml-encryption": "~0.6.0",
-    "async": "~0.2.10",
-    "async-ext": "~0.1.4"
+    "xmldom": "~0.1.19"
   }
 }

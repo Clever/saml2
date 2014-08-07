@@ -1,6 +1,7 @@
 _             = require 'underscore'
 async         = _.extend require('async'), require('async-ext')
 crypto        = require 'crypto'
+debug         = require('debug') 'saml2'
 {parseString} = require 'xml2js'
 url           = require 'url'
 util          = require 'util'
@@ -264,6 +265,7 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
     (cb_wf) ->
       decrypt_assertion saml_response, sp_private_key, cb_wf
     (result, cb_wf) ->
+      debug result
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
       unless _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
         return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
@@ -316,6 +318,7 @@ module.exports.ServiceProvider =
             return zlib.inflateRaw raw, cb_wf
           setImmediate cb_wf, null, raw
         (response_buffer, cb_wf) ->
+          debug saml_response
           saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
