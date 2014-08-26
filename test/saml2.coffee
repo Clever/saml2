@@ -168,6 +168,10 @@ describe 'saml2', ->
       attributes = saml2.parse_assertion_attributes dom_from_test_file('good_assertion.xml')
       assert.deepEqual attributes, expected_attributes
 
+    it 'correctly parses no assertion attributes', ->
+      attributes = saml2.parse_assertion_attributes dom_from_test_file('blank_assertion.xml')
+      assert.deepEqual attributes, {}
+
   # Assert
   describe 'assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->
