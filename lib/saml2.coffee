@@ -211,7 +211,8 @@ parse_assertion_attributes = (dom) ->
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
   attribute_statement = assertion[0].getElementsByTagNameNS(XMLNS.SAML, 'AttributeStatement')
-  throw new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length is 1
+  throw new Error("Expected 1 AttributeStatement inside Assertion; found #{attribute_statement.length}") unless attribute_statement.length <= 1
+  return {} if attribute_statement.length is 0
 
   assertion_attributes = {}
   for attribute in attribute_statement[0].getElementsByTagNameNS(XMLNS.SAML, 'Attribute')
