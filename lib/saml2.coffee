@@ -324,7 +324,7 @@ module.exports.ServiceProvider =
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
           response = { response_header }
-          cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
+          cb_wf new Error("SAML Response does not contain status indicating success!") unless check_status_success(saml_response)
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               response.type = 'authn_response'
