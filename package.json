@@ -1,27 +1,26 @@
 {
-  "name": "saml2-js",
-  "version": "0.2.5",
+  "name": "saml2-js-jonime",
+  "version": "0.2.6",
   "description": "SAML 2.0 node helpers",
-  "author": "Clever",
+  "author": "jonime",
   "main": "index.js",
   "engines": {
     "node": ">=0.10.x"
   },
   "scripts": {
     "test": "make -Br test",
-    "test-cov": "make -Br test-cov",
     "prepublish": "make build"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Clever/saml2.git"
+    "url": "git://github.com/jonime/saml2.git"
   },
   "keywords": [
     "saml",
     "node"
   ],
   "bugs": {
-    "url": "https://github.com/Clever/saml2/issues"
+    "url": "https://github.com/jonime/saml2/issues"
   },
   "devDependencies": {
     "mocha": "~1.17.1",
@@ -33,7 +32,7 @@
     "debug": "^1.0.4",
     "underscore": "~1.6.0",
     "xml-crypto": "0.0.22",
-    "xml-encryption": "~0.6.0",
+    "xml-encryption": "~0.7.0",
     "xml2js": "~0.4.1",
     "xmlbuilder": "~2.1.0",
     "xmldom": "~0.1.19"

@@ -1,5 +1,7 @@
 # SAML2 Library
 
+Fork from https://github.com/Clever/saml2
+
 ## Description
 
 Takes care of the complexities of the SAML protocol and provides an easy interface for using it. Specifically, creating metadata.xml files, creating `AuthnRequest`s and parsing and validating `AuthnResponse`s.
