@@ -1,27 +1,26 @@
 {
   "name": "saml2-js",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "SAML 2.0 node helpers",
-  "author": "Clever",
+  "author": "jonime",
   "main": "index.js",
   "engines": {
     "node": ">=0.10.x"
   },
   "scripts": {
     "test": "make -Br test",
-    "test-cov": "make -Br test-cov",
     "prepublish": "make build"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Clever/saml2.git"
+    "url": "git://github.com/jonime/saml2.git"
   },
   "keywords": [
     "saml",
     "node"
   ],
   "bugs": {
-    "url": "https://github.com/Clever/saml2/issues"
+    "url": "https://github.com/jonime/saml2/issues"
   },
   "devDependencies": {
     "mocha": "~1.17.1",
