@@ -299,7 +299,7 @@ module.exports.ServiceProvider =
         uri = url.parse identity_provider.sso_login_url
         uri.query =
           SAMLRequest: deflated.toString 'base64'
-          RelayState: relay_state
+        uri.query.RelayState = relay_state if relay_state?
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
