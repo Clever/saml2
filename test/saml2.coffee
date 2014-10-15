@@ -232,6 +232,16 @@ describe 'saml2', ->
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
+    it 'passes through RelayState in login url', (done) ->
+      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+
+      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
+        assert not err?, "Error creating login URL: #{err}"
+        parsed_url = url.parse login_url, true
+        assert.equal parsed_url.query?.RelayState, 'Some Relay State!'
+        done()
+
     it 'can create logout url', (done) ->
       sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
