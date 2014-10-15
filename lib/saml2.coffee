@@ -290,13 +290,16 @@ module.exports.ServiceProvider =
 
     # -- Required
     # Returns a redirect URL, at which a user can login, and the ID of the request.
-    create_login_url: (identity_provider, assert_endpoint, cb) =>
+    create_login_url: (identity_provider, assert_endpoint, relay_state..., cb) =>
+      relay_state = relay_state[0]
+
       { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url
       zlib.deflateRaw xml, (err, deflated) ->
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
         uri.query =
           SAMLRequest: deflated.toString 'base64'
+          RelayState: relay_state
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
