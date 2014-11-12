@@ -39,6 +39,72 @@ create_authn_request = (issuer, assert_endpoint, destination) ->
   .end()
   { id, xml }
 
+# Creates a Response containing a raw assertion. The assertion may be optionally signed and/or encrypted. @request_id
+# is optional and should be excluded for IdP initiated sign on.
+create_response = (issuer, request_id, destination, assertion) ->
+  id = '_' + crypto.randomBytes(21).toString('hex')
+  xml = xmlbuilder.create
+    "samlp:Response":
+      '@Consent': 'urn:oasis:names:tc:SAML:2.0:consent:unspecified'
+      '@Destination': destination
+      '@ID': id
+      '@InResponseTo': request_id
+      '@IssueInstant': (new Date()).toISOString()
+      '@Version': '2.0'
+      '@xmlns:samlp': XMLNS.SAMLP
+      'Issuer':
+        '@xmlns': XMLNS.SAML
+        '#text': issuer
+      'samlp:Status':
+        'samlp:StatusCode':
+          '@Value': 'urn:oasis:names:tc:SAML:2.0:status:Success'
+      '#raw': assertion
+  , { headless: true }
+  .end()
+
+# Creates an Assertion about an authentication. Both @subject and @attributes are optional but an assertion containing
+# neither is meaningless.
+create_assertion = (issuer, destination, subject, attributes) ->
+  id = '_' + crypto.randomBytes(21).toString('hex')
+
+  # Make assertion valid as of 5 minutes ago and up to 5 minutes in the future.
+  not_before_time = new Date(new Date().getTime() - (5 * 60 * 1000)).toISOString()
+  not_after_time = new Date(new Date().getTime() + (5 * 60 * 1000)).toISOString()
+
+  if subject?
+    subject_element =
+      NameID:
+        '@Format': subject.name_id_format || 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        '#text': subject.name_id
+      SubjectConfirmation:
+        '@Method': 'urn:oasis:names:tc:SAML:2.0:cm:bearer'
+        SubjectConfirmationData:
+          '@InResponseTo': subject.request_id
+          '@Recipient': destination
+          '@NotOnOrAfter': not_after_time
+
+  if attributes?
+    attribute_statement = _(attributes).map (value, name) -> { Attribute: { '@Name': name, AttributeValue: value } }
+
+  xml = xmlbuilder.create
+    Assertion:
+      '@ID': id
+      '@IssueInstant': (new Date()).toISOString()
+      '@Version': '2.0'
+      '@xmlns': XMLNS.SAML
+      Issuer: issuer
+      Subject: subject_element
+      Conditions:
+        '@NotBefore': new Date(new Date().getTime() - 300000).toISOString()
+        '@NotOnOrAfter': new Date(new Date().getTime() + 300000).toISOString()
+      AttributeStatement: attribute_statement
+      AuthnStatement:
+        '@AuthnInstant': (new Date()).toISOString()
+        AuthnContext:
+          AuthnContextClassRef: 'urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport'
+  , { headless: true }
+  .end()
+
 # Creates metadata and returns it as a string of xml. The metadata has one POST assertion endpoint.
 create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate) ->
   xmlbuilder.create
