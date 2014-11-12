@@ -350,6 +350,55 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
       cb_wf null, { user }
   ], cb
 
+# Takes in raw @xml and adds a signature signing the specified node using the @key and @hash_algorithm.
+sign_xml_node = (xml, key, hash_algorithm, node_name) ->
+  signature = new xmlcrypto.SignedXml()
+  signature.addReference "//*[local-name(.)='#{node_name}']", ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"], hash_algorithm, "", "", "", true
+  signature.signingKey = key
+  signature.computeSignature xml
+  signature.getSignedXml()
+
+# Takes in raw @assertion and encrypts it using the given @key and @cert.
+encrypt_assertion = (assertion, key, cert, cb) ->
+  crypto_options =
+    rsa_pub: key
+    pem: cert
+    encryptionAlgorithm: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc'
+    keyEncryptionAlgorighm: 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p'
+
+  xmlenc.encrypt assertion, crypto_options, (err, encrypted_data) ->
+    cb err, "<EncryptedAssertion xmlns=\"urn:oasis:names:tc:SAML:2.0:assertion\">#{encrypted_data}</EncryptedAssertion>"
+
+# Creates a Response that includes an Assertion about the specified subject
+create_authn_response = (issuer, destination, request_id, subject, options, cb) ->
+  default_options =
+    encrypt_assertion: true
+    sign_assertion: true
+    sign_response: false
+    hash_algorithm: 'http://www.w3.org/2000/09/xmldsig#sha1'
+    signing_key: null
+    encryption_key: null
+    encryption_cert: null
+  options = _.defaults(options, default_options)
+
+  unless subject?.name_id? or subject?.attributes?
+    return cb new Error("Assertion must contain at least one subject or attribute list.")
+
+  async.waterfall [
+    (cb_wf) ->
+      assertion = create_assertion issuer, destination, { name_id: subject.name_id, name_id_format: subject.name_id_format }, subject.attributes
+      if options.sign_assertion
+        assertion = sign_xml_node assertion, options.signing_key, options.hash_algorithm, 'Assertion'
+      if options.encrypt_assertion
+        return encrypt_assertion assertion, options.encryption_key, options.encryption_cert, cb_wf
+      setImmediate -> cb_wf null, assertion
+    (assertion, cb_wf) ->
+      response = create_response issuer, request_id, destination, assertion
+      if options.sign_response
+        response = sign_xml_node response, options.signing_key, options.hash_algorithm, 'Response'
+      cb_wf null, response
+  ], cb
+
 module.exports.ServiceProvider =
   class ServiceProvider
     constructor: (@issuer, @private_key, @certificate) ->
