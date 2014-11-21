@@ -20,7 +20,11 @@ XMLNS =
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination) ->
+create_authn_request = (issuer, assert_endpoint, destination, force_authn, context) ->
+  if context?
+    context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
+    context_element.push '@Comparison': context.comparison
+
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create
     AuthnRequest:
@@ -32,10 +36,12 @@ create_authn_request = (issuer, assert_endpoint, destination) ->
       '@Destination': destination
       '@AssertionConsumerServiceURL': assert_endpoint
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+      '@ForceAuthn': force_authn
       'saml:Issuer': issuer
       NameIDPolicy:
         '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
+      RequestedAuthnContext: context_element
   .end()
   { id, xml }
 
@@ -291,9 +297,10 @@ module.exports.ServiceProvider =
     # -- Required
     # Returns a redirect URL, at which a user can login, and the ID of the request.
     create_login_url: (identity_provider, assert_endpoint, relay_state..., cb) =>
+      options = relay_state[1]
       relay_state = relay_state[0]
 
-      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url
+      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, options?.force_authn, options?.context
       zlib.deflateRaw xml, (err, deflated) ->
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
