@@ -38,6 +38,15 @@ describe 'saml2', ->
       assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
       assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
 
+    it 'contains an AuthnContext if requested', ->
+      { id, xml } = saml2.create_authn_request 'a', 'b', 'c', true, { comparison: 'exact', class_refs: ['context:class']}
+      dom = (new xmldom.DOMParser()).parseFromString xml
+      authn_request = dom.getElementsByTagName('AuthnRequest')[0]
+
+      requested_authn_context = authn_request.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'RequestedAuthnContext')[0]
+      assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
+      assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
+
   describe 'create_metadata', ->
     it 'contains expected fields', ->
       cert = get_test_file 'test.crt'
