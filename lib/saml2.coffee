@@ -89,13 +89,17 @@ format_pem = (key, type) ->
 
 # Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
 # the result as an object containing the query parameters.
-sign_get_request = (saml_request, private_key) ->
-  data = "SAMLRequest=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
+sign_get_request = (saml_request, private_key, relay_state) ->
+  data = "SAMLRequest=" + encodeURIComponent(saml_request)
+  if relay_state
+    data += "&RelayState=" + encodeURIComponent(relay_state)
+  data += "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
   sign = crypto.createSign 'RSA-SHA256'
   sign.update(data)
 
   {
     SAMLRequest: saml_request
+    RelayState: relay_state
     SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
     Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
   }
@@ -305,8 +309,7 @@ module.exports.ServiceProvider =
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
         uri.query =
-          SAMLRequest: deflated.toString 'base64'
-        uri.query.RelayState = relay_state if relay_state?
+          sign_get_request deflated.toString('base64'), @private_key, relay_state
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
