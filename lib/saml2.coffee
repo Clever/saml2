@@ -81,11 +81,12 @@ create_logout_request = (issuer, name_id, session_index, destination) ->
       'samlp:SessionIndex': session_index
   .end()
 
-create_logout_response = (issuer, status, in_response_to, destination) ->
+# Creates a LogoutResponse and returns it as a string of xml.
+create_logout_response = (issuer, in_response_to, destination, status='urn:oasis:names:tc:SAML:2.0:status:Success') ->
   xmlbuilder.create(
     {'samlp:LogoutResponse':
         '@Destination': destination
-        '@ID':  '_' + crypto.randomBytes(21).toString('hex')
+        '@ID': '_' + crypto.randomBytes(21).toString('hex')
         '@InResponseTo': in_response_to
         '@IssueInstant': (new Date()).toISOString()
         '@Version': '2.0'
@@ -93,7 +94,7 @@ create_logout_response = (issuer, status, in_response_to, destination) ->
         '@xmlns:saml': XMLNS.SAML
         'saml:Issuer': issuer
         'samlp:Status':
-          'samlp:StatusCode': '@Value': 'urn:oasis:names:tc:SAML:2.0:status:Success'
+          'samlp:StatusCode': '@Value': status
     }, { headless: true }
     ).end()
 
@@ -105,27 +106,25 @@ format_pem = (key, type) ->
 
 # Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
 # the result as an object containing the query parameters.
-sign_get_request = (saml_request, private_key, relay_state) ->
-  saml_request_data = "SAMLRequest=" + encodeURIComponent(saml_request)
+sign_get_request = (saml_request, private_key, relay_state, response=false) ->
+  action = if response then "SAMLResponse" else "SAMLRequest"
+  data = "#{action}=" + encodeURIComponent(saml_request)
+  if relay_state
+    data += "&RelayState=" + encodeURIComponent(relay_state)
+  data += "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
+
+  saml_request_data = "#{action}=" + encodeURIComponent(saml_request)
   relay_state_data = if relay_state? then "&RelayState=" + encodeURIComponent(relay_state) else ""
   sigalg_data = "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
   sign = crypto.createSign 'RSA-SHA256'
   sign.update(saml_request_data + relay_state_data + sigalg_data)
 
+  saml_response_out = saml_request if response
+  saml_request_out = saml_request unless response
   {
-    SAMLRequest: saml_request
+    SAMLResponse: saml_response_out
+    SAMLRequest: saml_request_out
     RelayState: relay_state
-    SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-    Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
-  }
-
-sign_get_response = (saml_request, private_key) ->
-  data = "SAMLResponse=" + encodeURIComponent(saml_request) + "&SigAlg=" + encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256')
-  sign = crypto.createSign 'RSA-SHA256'
-  sign.update(data)
-
-  {
-    SAMLResponse: saml_request
     SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
     Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
   }
@@ -381,12 +380,13 @@ module.exports.ServiceProvider =
           async.lift(parse_response_header) saml_response, cb_wf
         (response_header, cb_wf) =>
           response = { response_header }
-          #cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
+              cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
               response.type = 'authn_response'
               parse_authn_response saml_response, @private_key, identity_provider.certificates, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
+              cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutRequest').length is 1
@@ -408,14 +408,14 @@ module.exports.ServiceProvider =
         uri.query = sign_get_request deflated.toString('base64'), @private_key, relay_state
         cb null, url.format(uri)
 
+    # Returns a redirect URL to confirm a successful logout.
     create_logout_response_url: (in_response_to, logout_url, cb) ->
-      xml = create_logout_response @issuer, "success", in_response_to, logout_url
+      xml = create_logout_response @issuer, in_response_to, logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse logout_url
-        uri.query = sign_get_response deflated.toString('base64'), @private_key
+        uri.query = sign_get_request deflated.toString('base64'), @private_key, undefined, true
         cb null, url.format(uri)
-      # create_logout_response
 
     # Returns XML metadata, used during initial SAML configuration
     create_metadata: (assert_endpoint) =>
