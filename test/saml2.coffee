@@ -192,6 +192,7 @@ describe 'saml2', ->
 
         expected_response =
           response_header:
+            id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
           type: 'authn_response'
