@@ -435,6 +435,7 @@ if process.env.NODE_ENV is "test"
   module.exports.check_status_success = check_status_success
   module.exports.decrypt_assertion = decrypt_assertion
   module.exports.parse_response_header = parse_response_header
+  module.exports.parse_logout_request = parse_logout_request
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.get_name_id = get_name_id
   module.exports.get_session_index = get_session_index

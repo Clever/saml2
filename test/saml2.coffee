@@ -86,8 +86,18 @@ describe 'saml2', ->
       verifier = crypto.createVerify 'RSA-SHA256'
       verifier.update 'SAMLRequest=TESTMESSAGE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
       assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
+      assert.equal signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+      assert.equal signed.SAMLRequest, 'TESTMESSAGE'
+
+    it 'correctly signs a get response with RelayState', ->
+      signed = saml2.sign_get_request 'TESTMESSAGE', get_test_file("test.pem"), 'TESTSTATE', true
+
+      verifier = crypto.createVerify 'RSA-SHA256'
+      verifier.update 'SAMLResponse=TESTMESSAGE&RelayState=TESTSTATE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
+      assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
       assert signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-      assert signed.SAMLRequest, 'TESTMESSAGE'
+      assert.equal signed.RelayState, 'TESTSTATE'
+      assert.equal signed.SAMLResponse, 'TESTMESSAGE'
 
   describe 'check_saml_signature', ->
     it 'accepts signed xml', ->
@@ -149,6 +159,13 @@ describe 'saml2', ->
 
     it 'errors if given a response with the wrong version', ->
       assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
+
+  describe 'parse_logout_request', =>
+    it 'correctly parses a logout request', =>
+      request = saml2.parse_logout_request dom_from_test_file('logout_request.xml')
+      assert.equal request.issuer, 'http://idp.example.com/metadata.xml'
+      assert.equal request.name_id, 'tstudent'
+      assert.equal request.session_index, '_2'
 
   describe 'get_name_id', ->
     it 'gets the correct NameID', ->
