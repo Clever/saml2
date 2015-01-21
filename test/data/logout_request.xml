@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<samlp:LogoutRequest Consent="urn:oasis:names:tc:SAML:2.0:consent:unspecified" Destination="https://sp.example.com/assert" ID="_1" IssueInstant="2015-01-21T22:30:38.150Z" Version="2.0" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+	<Issuer xmlns="urn:oasis:names:tc:SAML:2.0:assertion">http://idp.example.com/metadata.xml</Issuer>
+	<NameID xmlns="urn:oasis:names:tc:SAML:2.0:assertion">tstudent</NameID>
+	<samlp:SessionIndex>_2</samlp:SessionIndex>
+</samlp:LogoutRequest>
