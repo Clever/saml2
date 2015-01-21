@@ -119,8 +119,11 @@ sign_get_request = (saml_request, private_key, relay_state, response=false) ->
   sign = crypto.createSign 'RSA-SHA256'
   sign.update(saml_request_data + relay_state_data + sigalg_data)
 
-  saml_response_out = saml_request if response
-  saml_request_out = saml_request unless response
+  if response
+    saml_response_out = saml_request
+  else
+    saml_request_out = saml_request unless response
+
   {
     SAMLResponse: saml_response_out
     SAMLRequest: saml_request_out
@@ -359,7 +362,7 @@ module.exports.ServiceProvider =
     assert: (identity_provider, request_body, get_request..., cb) ->
       get_request =  get_request[0]
 
-      unless request_body?.SAMLResponse? || request_body?.SAMLRequest?
+      unless request_body?.SAMLResponse? or request_body?.SAMLRequest?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
 
       saml_response = null
@@ -369,7 +372,7 @@ module.exports.ServiceProvider =
 
       async.waterfall [
         (cb_wf) ->
-          raw = new Buffer(request_body.SAMLResponse || request_body.SAMLRequest, 'base64')
+          raw = new Buffer(request_body.SAMLResponse or request_body.SAMLRequest, 'base64')
           # For GET requests, it's necessary to inflate the response before parsing it.
           if (get_request)
             return zlib.inflateRaw raw, cb_wf
