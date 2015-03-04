@@ -1,6 +1,7 @@
 _             = require 'underscore'
 assert        = require 'assert'
 async         = require 'async'
+zlib          = require 'zlib'
 crypto        = require 'crypto'
 fs            = require 'fs'
 saml2         = require "#{__dirname}/../index"
@@ -268,6 +269,30 @@ describe 'saml2', ->
         parsed_url = url.parse login_url, true
         assert.equal parsed_url.query?.RelayState, 'Some Relay State!'
         done()
+
+    it 'can specify a nameid format', (done) ->
+      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+
+      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', {nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}, (err, login_url, id) ->
+        assert not err?, "Error creating login URL: #{err}"
+        parsed_url = url.parse login_url, true
+        saml_request = new Buffer(parsed_url.query?.SAMLRequest, 'base64')
+        zlib.inflateRaw saml_request, (err, result) ->
+          assert.notEqual result.toString('utf8').indexOf("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"), -1
+          done()
+
+    it 'requests a namid format type of urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified if none is specified', (done) ->
+      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+
+      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
+        assert not err?, "Error creating login URL: #{err}"
+        parsed_url = url.parse login_url, true
+        saml_request = new Buffer(parsed_url.query?.SAMLRequest, 'base64')
+        zlib.inflateRaw saml_request, (err, result) ->
+          assert.notEqual result.toString('utf8').indexOf("urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"), -1
+          done()
 
     it 'can create logout url', (done) ->
       sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
