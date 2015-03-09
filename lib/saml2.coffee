@@ -18,6 +18,10 @@ XMLNS =
   DS: 'http://www.w3.org/2000/09/xmldsig#'
   XENC: 'http://www.w3.org/2001/04/xmlenc#'
 
+class SAMLError extends Error
+  constructor: (@message, @extra) ->
+    super @message
+
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
 create_authn_request = (issuer, assert_endpoint, destination, force_authn, context) ->
@@ -169,6 +173,24 @@ check_status_success = (dom) ->
       for attr in status_code.attributes
         return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   false
+
+get_status = (dom) ->
+  status_list = {}
+  status = dom.getElementsByTagNameNS(XMLNS.SAMLP, 'Status')
+  return status_list unless status.length is 1
+
+  for status_code in status[0].childNodes
+    if status_code.attributes?
+      for attr in status_code.attributes
+        if attr.name is 'Value'
+          top_status = attr.value
+          status_list[top_status] ?= []
+    for sub_status_code in status_code.childNodes
+      if sub_status_code.attributes?
+        for attr in sub_status_code.attributes
+          if attr.name is 'Value'
+            status_list[top_status].push attr.value
+  status_list
 
 to_error = (err) ->
   return null unless err?
@@ -385,11 +407,13 @@ module.exports.ServiceProvider =
           response = { response_header }
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
-              cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
+              unless check_status_success(saml_response)
+                cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
               response.type = 'authn_response'
               parse_authn_response saml_response, @private_key, identity_provider.certificates, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
-              cb_wf new Error("SAML Response was not success!") unless check_status_success(saml_response)
+              unless check_status_success(saml_response)
+                cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutRequest').length is 1
