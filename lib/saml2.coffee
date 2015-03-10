@@ -24,7 +24,7 @@ class SAMLError extends Error
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination, force_authn, context) ->
+create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
   if context?
     context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
     context_element.push '@Comparison': context.comparison
@@ -43,7 +43,7 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
       '@ForceAuthn': force_authn
       'saml:Issuer': issuer
       NameIDPolicy:
-        '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        '@Format': nameid_format || 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
       RequestedAuthnContext: context_element
   .end()
@@ -371,7 +371,7 @@ module.exports.ServiceProvider =
       options = relay_state[1]
       relay_state = relay_state[0]
 
-      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, options?.force_authn, options?.context
+      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, options?.force_authn, options?.context, options?.nameid_format
       zlib.deflateRaw xml, (err, deflated) ->
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
