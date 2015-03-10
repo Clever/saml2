@@ -43,7 +43,7 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
       '@ForceAuthn': force_authn
       'saml:Issuer': issuer
       NameIDPolicy:
-        '@Format': nameid_format || 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        '@Format': nameid_format or 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
       RequestedAuthnContext: context_element
   .end()
