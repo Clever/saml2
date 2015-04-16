@@ -244,11 +244,11 @@ describe 'saml2', ->
 
   describe 'ServiceProvider', ->
     it 'can be constructed', (done) ->
-      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       done()
 
     it 'can create login url', (done) ->
-      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
 
       async.waterfall [
@@ -261,7 +261,7 @@ describe 'saml2', ->
         done()
 
     it 'passes through RelayState in login url', (done) ->
-      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
 
       sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
@@ -271,7 +271,7 @@ describe 'saml2', ->
         done()
 
     it 'can specify a nameid format', (done) ->
-      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
 
       sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', {nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}, (err, login_url, id) ->
@@ -283,7 +283,7 @@ describe 'saml2', ->
           done()
 
     it 'requests a namid format type of urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified if none is specified', (done) ->
-      sp = new saml2.ServiceProvider 'private_key', 'cert'
+      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
       idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
 
       sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
