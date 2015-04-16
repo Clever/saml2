@@ -4,6 +4,7 @@ publish:
     email: $$npm_drone_email
     password: $$npm_drone_password
     username: $$npm_drone_username
+    registry: https://registry.npmjs.org
     when:
       branch: master
 notify:
