@@ -1,4 +1,15 @@
+env:
+- npmdeployusername=$$npmdeployusername
+- npmdeploypassword=$$npmdeploypassword
+- email=$$email
 image: node0.10
+publish:
+  npm:
+    email: $$email
+    password: $$npmdeploypassword
+    username: $$npmdeployusername
+    when:
+      branch: master
 notify:
   email:
     recipients:
