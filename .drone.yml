@@ -4,7 +4,6 @@ publish:
     email: $$npm_drone_email
     password: $$npm_drone_password
     username: $$npm_drone_username
-    registry: https://registry.npmjs.org
     when:
       branch: master
 notify:
@@ -17,6 +16,7 @@ notify:
     on_success: false
     webhook_url: $$slack_webhook
 script:
-- npm config set ca ""
 - npm install
 - npm test
+- nvm install 0.10.29
+- nvm use 0.10.29
