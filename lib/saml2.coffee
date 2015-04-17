@@ -123,18 +123,20 @@ sign_get_request = (saml_request, private_key, relay_state, response=false) ->
   sign = crypto.createSign 'RSA-SHA256'
   sign.update(saml_request_data + relay_state_data + sigalg_data)
 
-  if response
-    saml_response_out = saml_request
-  else
-    saml_request_out = saml_request unless response
+  samlQueryString = {}
 
-  {
-    SAMLResponse: saml_response_out
-    SAMLRequest: saml_request_out
-    RelayState: relay_state
-    SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-    Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
-  }
+  if response
+    samlQueryString.SAMLResponse = saml_request
+  else
+    samlQueryString.SAMLRequest = saml_request
+
+  if relay_state
+    samlQueryString.RelayState = relay_state
+
+  samlQueryString.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+  samlQueryString.Signature = sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
+
+  samlQueryString
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
@@ -364,7 +366,6 @@ parse_logout_request = (dom) ->
 module.exports.ServiceProvider =
   class ServiceProvider
     constructor: (@issuer, @private_key, @certificate) ->
-
     # -- Required
     # Returns a redirect URL, at which a user can login, and the ID of the request.
     create_login_url: (identity_provider, assert_endpoint, relay_state..., cb) =>
@@ -372,12 +373,11 @@ module.exports.ServiceProvider =
       relay_state = relay_state[0]
 
       { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, options?.force_authn, options?.context, options?.nameid_format
-      zlib.deflateRaw xml, (err, deflated) ->
+      zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
         uri.query =
-          SAMLRequest: deflated.toString 'base64'
-        uri.query.RelayState = relay_state if relay_state?
+          sign_get_request deflated.toString('base64'), @private_key, relay_state
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
