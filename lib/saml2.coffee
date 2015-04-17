@@ -123,18 +123,20 @@ sign_get_request = (saml_request, private_key, relay_state, response=false) ->
   sign = crypto.createSign 'RSA-SHA256'
   sign.update(saml_request_data + relay_state_data + sigalg_data)
 
-  if response
-    saml_response_out = saml_request
-  else
-    saml_request_out = saml_request unless response
+  samlQueryString = {}
 
-  {
-    SAMLResponse: saml_response_out
-    SAMLRequest: saml_request_out
-    RelayState: relay_state
-    SigAlg: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-    Signature: sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
-  }
+  if response
+    samlQueryString.SAMLResponse = saml_request
+  else
+    samlQueryString.SAMLRequest = saml_request
+
+  if relay_state
+    samlQueryString.RelayState = relay_state
+
+  samlQueryString.SigAlg = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+  samlQueryString.Signature = sign.sign(format_pem(private_key, 'PRIVATE KEY'), 'base64')
+
+  samlQueryString
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
