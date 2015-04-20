@@ -322,13 +322,20 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
 # issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
 # is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificates, cb) ->
+parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted..., cb) ->
+  allow_unencrypted = allow_unencrypted[0]
   user = {}
   decrypted_assertion = null
 
   async.waterfall [
     (cb_wf) ->
-      decrypt_assertion saml_response, sp_private_key, cb_wf
+      decrypt_assertion saml_response, sp_private_key, (err, result) ->
+        return cb_wf null, result unless err?
+        return cb_wf err, result unless allow_unencrypted
+        assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
+        unless assertion.length is 1
+          return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
+        cb_wf null, assertion[0].toString()
     (result, cb_wf) ->
       debug result
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
@@ -382,7 +389,8 @@ module.exports.ServiceProvider =
 
     # Returns an object containing the parsed response.
     assert: (identity_provider, request_body, get_request..., cb) ->
-      get_request =  get_request[0]
+      options = get_request[1]
+      get_request = get_request[0]
 
       unless request_body?.SAMLResponse? or request_body?.SAMLRequest?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
@@ -410,7 +418,7 @@ module.exports.ServiceProvider =
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificates, cb_wf
+              parse_authn_response saml_response, @private_key, identity_provider.certificates, options?.allow_unencrypted_assertion, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
