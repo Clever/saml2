@@ -383,8 +383,12 @@ module.exports.ServiceProvider =
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
-        uri.query =
-          sign_get_request deflated.toString('base64'), @private_key, relay_state
+        if options?.no_signature
+          uri.query = SAMLRequest: deflated.toString 'base64'
+          uri.query.RelayState = relay_state if relay_state?
+        else
+          uri.query =
+            sign_get_request deflated.toString('base64'), @private_key, relay_state
         cb null, url.format(uri), id
 
     # Returns an object containing the parsed response.
