@@ -50,12 +50,12 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
   { id, xml }
 
 # Creates metadata and returns it as a string of xml. The metadata has one POST assertion endpoint.
-create_metadata = (issuer, assert_endpoint, signing_certificate, encryption_certificate) ->
+create_metadata = (entity_id, assert_endpoint, signing_certificate, encryption_certificate) ->
   xmlbuilder.create
     'md:EntityDescriptor':
       '@xmlns:md': XMLNS.MD
       '@xmlns:ds': XMLNS.DS
-      '@entityID': issuer
+      '@entityID': entity_id
       'md:SPSSODescriptor': [
           '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol',
           { 'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate) },
@@ -110,7 +110,7 @@ format_pem = (key, type) ->
 
 # Takes a compressed/base64 enoded @saml_request and @private_key and signs the request using RSA-SHA256. It returns
 # the result as an object containing the query parameters.
-sign_get_request = (saml_request, private_key, relay_state, response=false) ->
+sign_request = (saml_request, private_key, relay_state, response=false) ->
   action = if response then "SAMLResponse" else "SAMLRequest"
   data = "#{action}=" + encodeURIComponent(saml_request)
   if relay_state
@@ -322,8 +322,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
 # issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
 # is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted..., cb) ->
-  allow_unencrypted = allow_unencrypted[0]
+parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted, cb) ->
   user = {}
   decrypted_assertion = null
 
@@ -370,45 +369,78 @@ parse_logout_request = (dom) ->
 
   request
 
+set_option_defaults = (request_options, idp_options, sp_options) ->
+  _.defaults({}, request_options, idp_options, sp_options)
+
 module.exports.ServiceProvider =
   class ServiceProvider
-    constructor: (@issuer, @private_key, @certificate) ->
-    # -- Required
-    # Returns a redirect URL, at which a user can login, and the ID of the request.
-    create_login_url: (identity_provider, assert_endpoint, relay_state..., cb) =>
-      options = relay_state[1]
-      relay_state = relay_state[0]
+    # Initializes a service provider given the passed options
+    # @entity_id, @private_key, @certificate, @assert_endpoint can only be set here and are used by exported functions.
+    # Rest of options can be set/overwritten by the identity provider and/or at function call.
+    constructor: (options) ->
+      {@entity_id, @private_key, @certificate, @assert_endpoint} = options
+      @shared_options = _.pick(options, "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
 
-      { id, xml } = create_authn_request @issuer, assert_endpoint, identity_provider.sso_login_url, options?.force_authn, options?.context, options?.nameid_format
+    # Returns:
+    #   Redirect URL at which a user can login
+    #   ID of the request
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    create_login_request_url: (identity_provider, options, cb) ->
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
-        if options?.no_signature
+        if options.sign_get_request
           uri.query = SAMLRequest: deflated.toString 'base64'
-          uri.query.RelayState = relay_state if relay_state?
+          uri.query.RelayState = options.relay_state if options.relay_state?
         else
-          uri.query =
-            sign_get_request deflated.toString('base64'), @private_key, relay_state
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         cb null, url.format(uri), id
 
-    # Returns an object containing the parsed response.
-    assert: (identity_provider, request_body, get_request..., cb) ->
-      options = get_request[1]
-      get_request = get_request[0]
+    # Returns:
+    #   An object containing the parsed response for a redirect assert.
+    #   This type of assert inflates the response before parsing it.
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    redirect_assert: (identity_provider, options, cb) ->
+      options = _.extend(options, {get_request: true})
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+      @_assert identity_provider, options, cb
 
-      unless request_body?.SAMLResponse? or request_body?.SAMLRequest?
+
+    # Returns:
+    #   An object containing the parsed response for a post assert.
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    post_assert: (identity_provider, options, cb) ->
+      options = _.extend(options, {get_request: false})
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+      @_assert identity_provider, options, cb
+
+    # Private function, called by redirect and post assert to return a response to
+    # corresponding assert.
+    _assert: (identity_provider, options, cb) ->
+      unless options.request_body?.SAMLResponse? or options.request_body?.SAMLRequest?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
 
       saml_response = null
       decrypted_assertion = null
-
       response = {}
 
       async.waterfall [
         (cb_wf) ->
-          raw = new Buffer(request_body.SAMLResponse or request_body.SAMLRequest, 'base64')
-          # For GET requests, it's necessary to inflate the response before parsing it.
-          if (get_request)
+          raw = new Buffer(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
+          # Inflate response for redirect requests before parsing it.
+          if (options.get_request)
             return zlib.inflateRaw raw, cb_wf
           setImmediate cb_wf, null, raw
         (response_buffer, cb_wf) ->
@@ -422,7 +454,7 @@ module.exports.ServiceProvider =
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificates, options?.allow_unencrypted_assertion, cb_wf
+              parse_authn_response saml_response, @private_key, identity_provider.certificates, options.allow_unencrypted_assertion, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
@@ -436,46 +468,74 @@ module.exports.ServiceProvider =
           cb_wf null, response
       ], cb
 
-    # -- Optional
-    # Returns a redirect URL, at which a user is logged out.
-    create_logout_url: (identity_provider, name_id, session_index, relay_state..., cb) =>
-      relay_state = relay_state[0]
-      xml = create_logout_request @issuer, name_id, session_index, identity_provider.sso_logout_url
+    # ----- Optional -----
+
+    # Returns:
+    #   Redirect URL, at which a user is logged out.
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    create_logout_request_url: (identity_provider, options, cb) =>
+      identity_provider = { sso_logout_url: identity_provider, options: {} } if _.isString(identity_provider)
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+      xml = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_logout_url
-        uri.query = sign_get_request deflated.toString('base64'), @private_key, relay_state
+        if options.sign_get_request
+          uri.query = SAMLRequest: deflated.toString 'base64'
+          uri.query.RelayState = options.relay_state if options.relay_state?
+        else
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         cb null, url.format(uri)
 
-    # Returns a redirect URL to confirm a successful logout.
-    create_logout_response_url: (in_response_to, logout_url, cb) ->
-      xml = create_logout_response @issuer, in_response_to, logout_url
+    # Returns:
+    #   Redirect URL to confirm a successful logout.
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    create_logout_response_url: (identity_provider, options, cb) ->
+      identity_provider = { sso_logout_url: identity_provider, options: {} } if _.isString(identity_provider)
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+      
+      xml = create_logout_response @entity_id, options.in_response_to, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse logout_url
-        uri.query = sign_get_request deflated.toString('base64'), @private_key, undefined, true
+        uri = url.parse identity_provider.sso_logout_url
+        if options.sign_get_request
+          uri.query = SAMLResponse: deflated.toString 'base64'
+          uri.query.RelayState = options.relay_state if options.relay_state?
+        else
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
         cb null, url.format(uri)
 
-    # Returns XML metadata, used during initial SAML configuration
-    create_metadata: (assert_endpoint) =>
-      create_metadata @issuer, assert_endpoint, @certificate, @certificate
+    # Returns:
+    #   XML metadata, used during initial SAML configuration
+    create_metadata: =>
+      create_metadata @entity_id, @assert_endpoint, @certificate, @certificate
 
 module.exports.IdentityProvider =
   class IdentityProvider
-    constructor: (@sso_login_url, @sso_logout_url, @certificates) ->
+    constructor: (options) ->
+      {@sso_login_url, @sso_logout_url, @certificates} = options
       @certificates = [ @certificates ] unless _.isArray(@certificates)
+      @shared_options = _.pick(options, "force_authn", "sign_get_request", "allow_unencrypted_assertion")
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
   module.exports.create_metadata = create_metadata
   module.exports.format_pem = format_pem
-  module.exports.sign_get_request = sign_get_request
+  module.exports.sign_request = sign_request
   module.exports.check_saml_signature = check_saml_signature
   module.exports.check_status_success = check_status_success
+  module.exports.pretty_assertion_attributes = pretty_assertion_attributes
   module.exports.decrypt_assertion = decrypt_assertion
   module.exports.parse_response_header = parse_response_header
   module.exports.parse_logout_request = parse_logout_request
-  module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.get_name_id = get_name_id
   module.exports.get_session_index = get_session_index
-  module.exports.pretty_assertion_attributes = pretty_assertion_attributes
+  module.exports.parse_assertion_attributes = parse_assertion_attributes
+  module.exports.set_option_defaults = set_option_defaults
+

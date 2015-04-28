@@ -1,102 +1,281 @@
-# SAML2 Library
+# SAML2-js
 
-## Description
+[![Build Status](https://ci.ops.clever.com/api/badge/github.com/Clever/saml2/status.svg?branch=master)](https://ci.ops.clever.com/github.com/Clever/saml2)
 
-Takes care of the complexities of the SAML protocol and provides an easy interface for using it. Specifically, creating metadata.xml files, creating `AuthnRequest`s and parsing and validating `AuthnResponse`s.
+`saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
 
-This is exposed as both a series of functions that implement each step of the SAML protocol, and an Express middleware that creates the necessary endpoints for the metadata, the login and the assertion.
+## Usage
 
-## Installation
+Install with [npm](https://www.npmjs.com/).
 
 ```bash
-  npm install saml2-js
+  npm install saml2-js --save
 ```
-
-## Expected Usage
 
 Include the SAML library.
 
-```coffee
-  saml_lib = require('saml')
+```javascript
+  var saml2 = require('saml2-js');
 ```
 
-To use the saml library, we think in terms of service providers (e.g. Clever) and identity providers (e.g. partners that use ADFS).
+## Documentation
 
-```coffee
-  sp = saml_lib.service_provider
-    private_key : 'saml.pem'
-    certificate : 'saml.crt'
+This library exports two constructors.
 
-  idp = saml_lib.identity_provider
-    sso_login_url : 'https://www.example.com/login'
-    sso_logout_url : 'https://www.example.com/logout'
-    certificate : 'adfs.crt'
+- [`ServiceProvider`](#ServiceProvider) - Represents a service provider that relies on a trusted [`IdentityProvider`](#IdentityProvider) for authentication and authorization in the SAML flow.
+- [`IdentityProvider`](#IdentityProvider) - Represents an online service that authenticates users in the SAML flow.
+
+<a name="note_options" />
+**Note:**  Some options can be set on the [SP](#ServiceProvider), [IdP](#IdentityProvider), and/or on a per-method basis. For the options that are set in multiple places, they are overridden in the following order: per-method basis *overrides* [IdP](#IdentityProvider) which *overrides* [SP](#ServiceProvider).
+
+<a name="ServiceProvider" />
+### ServiceProvider(options)
+Represents a service provider that relies on a trusted [`IdentityProvider`](#IdentityProvider) for authentication and authorization in the SAML flow.
+
+#### Options
+An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+
+- `entity_id` - **Required** - Unique identifier for the service provider, often the URL of the metadata file.
+- `private_key` - **Required** - (PEM format string) - Private key for the service provider.
+- `certificate` - **Required** - (PEM format string) - Certificate for the service provider.
+- `assert_endpoint` - **Required** - URL of service provider assert endpoint.
+- `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
+- `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
+- `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+
+#### Returns the following functions
+- [`create_login_request_url(IdP, options, cb)`](#create_login_request_url) - Get a URL to initiate a login.
+- [`redirect_assert(IdP, options, cb)`](#redirect_assert) - Gets a SAML response object if the login attempt is valid, used for redirect binding.
+- [`post_assert(IdP, options, cb)`](#post_assert) - Gets a SAML response object if the login attempt is valid, used for post binding.
+- [`create_logout_request_url(IdP, options, cb)`](#create_logout_request_url)- Creates a SAML Request URL to initiate a user logout.
+- [`create_logout_response_url(IdP, options, cb)`](#create_logout_response_url) - Creates a SAML Response URL to confirm a successful [IdP](#IdentityProvider) initiated logout.
+- [`create_metadata()`](#create_metadata) - Returns the XML metadata used during the initial SAML configuration.
+
+#### Example
+```javascript
+
+  var sp_options = {
+    entity_id: "https://sp.example.com/metadata.xml",
+    private_key: fs.readFileSync("key-file.pem").toString(),
+    certificate: fs.readFileSync("cert-file.crt").toString(),
+    assert_endpoint: "https://sp.example.com/assert",
+    force_authn: true,
+    auth_context: { comparison: "exact", class_refs: ["urn:oasis:names:tc:SAML:1.0:am:password"] },
+    nameid_format: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+    sign_get_request: false,
+    allow_unencrypted_assertion: true
+  }
+
+  // Call service provider constructor with options
+  var sp = new saml2.ServiceProvider(sp_options);
+
+  // Example use of service provider.
+  // Call metadata to get XML metatadata used in configuration.
+  var metadata = sp.create_metadata();
 
 ```
 
-Upon creating at least one service provider and one identity provider, you can then create SAML requests between them.
+#### Service provider function definitions
 
-```coffee
-  # -- REQUIRED --
-  # Returns a redirect URL, at which a user can login
-  sp.create_login_url(idp, cb)
+<a name="create_login_request_url" />
+##### create_login_request_url(IdP, options, cb)
+Get a URL to initiate a login.
 
-  # Returns user object, if the login attempt was valid.
-  sp.assert(idp, request_body, cb)
+Takes the following arguments:
+- `IdP` - [IdP](#IdentityProvider)
+- `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+  - `relay_state` - SAML relay state.
+  - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on the [SP](#ServiceProvider).
+  - `nameid_format` - Format for Name ID.  This can also be configured on the [SP](#ServiceProvider).
+  - `force_authn`- (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+- `cb(error, login_url, request_id)` - Callback called with the login URL and ID of the request.
 
-  # -- OPTIONAL --
-  # Returns a redirect URL, at which a user is logged out.
-  sp.create_logout_url(idp, cb)
 
-  # Returns XML containing service-provider parameters.
-  # For use during initial SAML configuration
-  sp.create_metadata(idp, cb)
+<a name="redirect_assert" />
+##### redirect_assert(IdP, options, cb)
+Gets a SAML response object if the login attempt is valid, used for redirect binding.
+
+Takes the following arguments:
+- `IdP` - [IdP](#IdentityProvider)
+- `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+  - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
+  - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+- `cb(error, response)` - Callback called with the [request response](#assert_response).
+
+<a name="assert_response" />
+Example of the SAML assert response returned:
+
+  ```javascript
+  { response_header:
+     { id: '_abc-1',
+       destination: 'https://sp.example.com/assert',
+       in_response_to: '_abc-2' },
+    type: 'authn_response',
+    user:
+     { name_id: 'nameid',
+       session_index: '_abc-3',
+       attributes:
+        { 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ] } } }
+  ```
+
+<a name="post_assert" />
+##### post_assert(IdP, options, cb)
+Gets a SAML response object if the login attempt is valid, used for post binding.
+
+Takes the following arguments:
+- `IdP` - [IdP](#IdentityProvider)
+- `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+  - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
+  - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+- `cb(error, response)` - Callback called with the [request response](#assert_response).
+
+
+<a name="create_logout_request_url" />
+##### create_logout_request_url(IdP, options, cb)
+Creates a SAML Request URL to initiate a user logout.
+
+Takes the following arguments:
+- `IdP` - [IdP](#IdentityProvider).  Note: Can pass `sso_logout_url` instead of IdP.
+- `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+  + `name_id` - Format for Name ID.  This can also be configured on a per-method basis.
+  + `session_index` - Session index to use for creating logout request.
+  + `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  + `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  + `relay_state` - SAML relay state.
+- `cb(error, request_url)` - Callback called with the logout request url.
+
+
+<a name="create_logout_response_url" />
+##### create_logout_response_url(IdP, options, cb)
+Creates a SAML Response URL to confirm a successful [IdP](#IdentityProvider) initiated logout.
+
+Takes the following arguments:
+- `IdP` - [IdP](#IdentityProvider).  Note: Can pass `sso_logout_url` instead of IdP.
+- `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+  + `in_response_to` - The ID of the request that this is in response to. Should be checked against any sent request IDs.
+  + `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  + `relay_state` - SAML relay state.
+- `cb(error, response_url)` - Callback called with the logout response url.
+
+<a name="create_metadata" />
+##### create_metadata()
+Returns the XML metadata used during the initial SAML configuration.
+
+<a name="IdentityProvider" />
+### IdentityProvider(options)
+Represents an online service that authenticates users in the SAML flow.
+
+Returns no functions, exists solely to be passed to an [SP](#ServiceProvider) function.
+
+#### Options
+An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
+
+- `sso_login_url` - **Required** - Login url to use during a login request.
+- `sso_logout_url` - **Required** - Logout url to use during a logout request.
+- `certificates` - **Required** - (PEM format string or array of PEM format strings) - Certificate or certificates (array of certificate) for the identity provider.
+- `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [SP](#ServiceProvider) or on a per-method basis.
+- `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [[SP](#ServiceProvider) or on a per-method basis.
+- `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [SP](#ServiceProvider) or on a per-method basis.
+
+#### Example
+```javascript
+
+  // Initialize options object
+  var idp_options = {
+    sso_login_url: "https://idp.example.com/login",
+    sso_logout_url: "https://idp.example.com/logout",
+    certificates: [fs.readFileSync("cert-file1.crt").toString(), fs.readFileSync("cert-file2.crt").toString()],
+    force_authn: true,
+    sign_get_request: false,
+    allow_unencrypted_assertion: false
+  };
+
+  // Call identity provider constructor with options
+  var idp = new saml2.IdentityProvider(idp_options);
+
+  // Example usage of identity provider.
+  // Pass identity provider into a service provider function with options and a callback.
+  sp.post_assert(idp, {}, callback);
+
 ```
 
-## Helper Methods
 
-We will break each of the `service_provider` methods into minimal, testable methods.
+## Example: Express implementation
 
-```coffee
-  ... TODO ...
-  parse_xml
-  parse_assert
-  createAuthRequest
+Library users will need to implement a set of URL endpoints, here is an example of [express](http://expressjs.com/) endpoints.
+
+```javascript
+var saml2 = require('saml2-js');
+var fs = require('fs');
+var express = require('express');
+var app = express();
+
+// Create service provider
+var sp_options = {
+  entity_id: "https://sp.example.com/metadata.xml",
+  private_key: fs.readFileSync("key-file.pem").toString(),
+  certificate: fs.readFileSync("cert-file.crt").toString(),
+  assert_endpoint: "https://sp.example.com/assert"
+};
+var sp = new saml2.ServiceProvider(sp_options);
+
+// Create identity provider
+var idp_options = {
+  sso_login_url: "https://idp.example.com/login",
+  sso_logout_url: "https://idp.example.com/logout",
+  certificates: [fs.readFileSync("cert-file1.crt").toString(), fs.readFileSync("cert-file2.crt").toString()]
+};
+var idp = new saml2.IdentityProvider(idp_options);
+
+// ------ Define express endpoints ------
+
+// Endpoint to retrieve metadata
+app.get("/metadata.xml", function(req, res) {
+  res.send(sp.create_metadata());
+});
+
+// Starting point for login
+app.get("/login", function(req, res) {
+  sp.create_login_request_url(idp, {}, function(err, login_url, request_id) {
+    if (err != null)
+      return res.send(500);
+    res.redirect(login_url);
+  });
+});
+
+// Assert endpoint for when login completes
+app.post("/assert", function(req, res) {
+  var options = {request_body: req.body};
+  sp.post_assert(idp, options, function(err, saml_response) {
+    if (err != null)
+      return res.send(500);
+
+    // Save name_id and session_index for logout
+    // Note:  In practice these should be saved in the user session, not globally.
+    name_id = saml_response.user.name_id;
+    session_index = saml_response.user.session_index;
+
+    res.send("Hello #{saml_response.user.name_id}!");
+  });
+});
+
+// Starting point for logout
+app.get("/logout", function(req, res) {
+  var options = {
+    name_id: name_id,
+    session_index: session_index
+  };
+
+  sp.create_logout_request_url(idp, options, function(err, logout_url) {
+    if (err != null)
+      return res.send(500);
+    res.redirect(logout_url);
+  });
+});
+
+app.listen(3000);
+
 ```
-
-## Example: Express implementation using `saml-lib`
-
-Library users will need to implement the URL endpoints. For example, express endpoints might look like the following:
-
-```coffee
-  app.get "/metadata.xml", (request, response) ->
-    sp.get_metadata idp, (err, metadata) ->
-      return response.send 500, err if err?
-      response.send 200, metadata
-
-  app.get "/login", (request, response) ->
-    sp.create_login_url idp, (err, login_url) ->
-      return response.send 500, err if err?
-      response.location login_url
-      response.send 302, "Redirecting..."
-
-  app.get "/logout", (request, response) ->
-    sp.create_logout_url idp, (err, login_url) ->
-      return response.send 500, err if err?
-      response.location login_url
-      response.send 302, "Redirecting..."
-
-  app.post "/assert", (request, response) ->
-    sp.assert idp, response.body, (err, user) ->
-      response.send 500, err if err?
-      response.send 200, "Hello #{user.email}!"
-```
-
-
-## Related Libraries
-
-- https://github.com/siphon-io/node-saml2
-- https://github.com/bozzltron/express-saml
-- https://github.com/bergie/passport-saml
-- https://github.com/auth0/node-saml
-- https://github.com/auth0/passport-wsfed-saml2
