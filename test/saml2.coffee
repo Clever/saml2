@@ -13,201 +13,238 @@ describe 'saml2', ->
   get_test_file = (filename) ->
     fs.readFileSync("#{__dirname}/data/#{filename}").toString()
 
-  dom_from_test_file = (filename) ->
-    (new xmldom.DOMParser()).parseFromString get_test_file filename
+  describe 'private helpers', ->
 
-  before =>
-    @good_response_dom = dom_from_test_file "good_response.xml"
+    dom_from_test_file = (filename) ->
+      (new xmldom.DOMParser()).parseFromString get_test_file filename
 
-  # Auth Request, before it is compressed and base-64 encoded
-  describe 'create_authn_request', ->
-    it 'contains expected fields', ->
-      { id, xml } = saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login'
-      dom = (new xmldom.DOMParser()).parseFromString xml
-      authn_request = dom.getElementsByTagName('AuthnRequest')[0]
+    before =>
+      @good_response_dom = dom_from_test_file "good_response.xml"
 
-      required_attributes =
-        Version: '2.0'
-        Destination: 'https://idp.example.com/login'
-        AssertionConsumerServiceURL: 'https://sp.example.com/assert'
-        ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+    # Auth Request, before it is compressed and base-64 encoded
+    describe 'create_authn_request', ->
+      it 'contains expected fields', ->
+        { id, xml } = saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login'
+        dom = (new xmldom.DOMParser()).parseFromString xml
+        authn_request = dom.getElementsByTagName('AuthnRequest')[0]
 
-      _(required_attributes).each (req_value, req_name) ->
-        assert _(authn_request.attributes).some((attr) -> attr.name is req_name and attr.value is req_value)
-        , "Expected to find attribute '#{req_name}' with value '#{req_value}'!"
+        required_attributes =
+          Version: '2.0'
+          Destination: 'https://idp.example.com/login'
+          AssertionConsumerServiceURL: 'https://sp.example.com/assert'
+          ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
 
-      assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
-      assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
+        _(required_attributes).each (req_value, req_name) ->
+          assert _(authn_request.attributes).some((attr) -> attr.name is req_name and attr.value is req_value)
+          , "Expected to find attribute '#{req_name}' with value '#{req_value}'!"
 
-    it 'contains an AuthnContext if requested', ->
-      { id, xml } = saml2.create_authn_request 'a', 'b', 'c', true, { comparison: 'exact', class_refs: ['context:class']}
-      dom = (new xmldom.DOMParser()).parseFromString xml
-      authn_request = dom.getElementsByTagName('AuthnRequest')[0]
+        assert _(authn_request.attributes).some((attr) -> attr.name is "ID"), "Missing required attribute 'ID'"
+        assert.equal dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Issuer')[0].firstChild.data, 'https://sp.example.com/metadata.xml'
 
-      requested_authn_context = authn_request.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'RequestedAuthnContext')[0]
-      assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
-      assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
+      it 'contains an AuthnContext if requested', ->
+        { id, xml } = saml2.create_authn_request 'a', 'b', 'c', true, { comparison: 'exact', class_refs: ['context:class']}
+        dom = (new xmldom.DOMParser()).parseFromString xml
+        authn_request = dom.getElementsByTagName('AuthnRequest')[0]
 
-  describe 'create_metadata', ->
-    it 'contains expected fields', ->
-      cert = get_test_file 'test.crt'
-      cert2 = get_test_file 'test2.crt'
+        requested_authn_context = authn_request.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'RequestedAuthnContext')[0]
+        assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
+        assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
-      metadata = saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2
-      dom = (new xmldom.DOMParser()).parseFromString metadata
+    describe 'create_metadata', ->
+      it 'contains expected fields', ->
+        cert = get_test_file 'test.crt'
+        cert2 = get_test_file 'test2.crt'
 
-      entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
-      assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
-        , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
+        metadata = saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2
+        dom = (new xmldom.DOMParser()).parseFromString metadata
 
-      assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
-        _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
-          _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
-        , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
+        entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
+        assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
+          , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
 
-      assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'SingleLogoutService')).some((assertion) ->
-        _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect') and
-          _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
-        , "Expected to find a SingleLogoutService with redirect binding and location 'https://sp.example.com/assert'"
+        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
+          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
+            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
+          , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
 
-  describe 'format_pem', ->
-    it 'formats an unformatted private key', ->
-      raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
-      formatted_key = saml2.format_pem raw_private_key, 'PRIVATE KEY'
-      assert.equal formatted_key.trim(), get_test_file("test.pem").trim()
+        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'SingleLogoutService')).some((assertion) ->
+          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect') and
+            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
+          , "Expected to find a SingleLogoutService with redirect binding and location 'https://sp.example.com/assert'"
 
-    it 'does not change an already formatted private key', ->
-      formatted_key = saml2.format_pem get_test_file("test.pem"), 'PRIVATE KEY'
-      assert.equal formatted_key, get_test_file("test.pem")
+    describe 'format_pem', ->
+      it 'formats an unformatted private key', ->
+        raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
+        formatted_key = saml2.format_pem raw_private_key, 'PRIVATE KEY'
+        assert.equal formatted_key.trim(), get_test_file("test.pem").trim()
 
-  describe 'sign_get_request', ->
-    it 'correctly signs a get request', ->
-      signed = saml2.sign_get_request 'TESTMESSAGE', get_test_file("test.pem")
+      it 'does not change an already formatted private key', ->
+        formatted_key = saml2.format_pem get_test_file("test.pem"), 'PRIVATE KEY'
+        assert.equal formatted_key, get_test_file("test.pem")
 
-      verifier = crypto.createVerify 'RSA-SHA256'
-      verifier.update 'SAMLRequest=TESTMESSAGE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
-      assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
-      assert.equal signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-      assert.equal signed.SAMLRequest, 'TESTMESSAGE'
+    describe 'sign_request', ->
+      it 'correctly signs a get request', ->
+        signed = saml2.sign_request 'TESTMESSAGE', get_test_file("test.pem")
 
-    it 'correctly signs a get response with RelayState', ->
-      signed = saml2.sign_get_request 'TESTMESSAGE', get_test_file("test.pem"), 'TESTSTATE', true
+        verifier = crypto.createVerify 'RSA-SHA256'
+        verifier.update 'SAMLRequest=TESTMESSAGE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
+        assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
+        assert.equal signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+        assert.equal signed.SAMLRequest, 'TESTMESSAGE'
 
-      verifier = crypto.createVerify 'RSA-SHA256'
-      verifier.update 'SAMLResponse=TESTMESSAGE&RelayState=TESTSTATE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
-      assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
-      assert signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
-      assert.equal signed.RelayState, 'TESTSTATE'
-      assert.equal signed.SAMLResponse, 'TESTMESSAGE'
+      it 'correctly signs a get response with RelayState', ->
+        signed = saml2.sign_request 'TESTMESSAGE', get_test_file("test.pem"), 'TESTSTATE', true
 
-  describe 'check_saml_signature', ->
-    it 'accepts signed xml', ->
-      assert saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
+        verifier = crypto.createVerify 'RSA-SHA256'
+        verifier.update 'SAMLResponse=TESTMESSAGE&RelayState=TESTSTATE&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256'
+        assert verifier.verify(get_test_file("test.crt"), signed.Signature, 'base64'), "Signature is not valid"
+        assert signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+        assert.equal signed.RelayState, 'TESTSTATE'
+        assert.equal signed.SAMLResponse, 'TESTMESSAGE'
 
-    it 'rejects xml without a signature', ->
-      assert.equal false, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
+    describe 'check_saml_signature', ->
+      it 'accepts signed xml', ->
+        assert saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
 
-    it 'rejects xml with an invalid signature', ->
-      assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
+      it 'rejects xml without a signature', ->
+        assert.equal false, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
 
-  describe 'check_status_success', =>
-    it 'accepts a valid success status', =>
-      assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
+      it 'rejects xml with an invalid signature', ->
+        assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
-    it 'rejects a missing success status', ->
-      assert not saml2.check_status_success(dom_from_test_file("response_error_status.xml")), "Did not get 'false' for invalid response."
+    describe 'check_status_success', =>
+      it 'accepts a valid success status', =>
+        assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
 
-    it 'rejects a missing status', ->
-      assert not saml2.check_status_success(dom_from_test_file("response_no_status.xml")), "Did not get 'false' for invalid response."
+      it 'rejects a missing success status', ->
+        assert not saml2.check_status_success(dom_from_test_file("response_error_status.xml")), "Did not get 'false' for invalid response."
 
-  describe 'pretty_assertion_attributes', ->
-    it 'creates a correct user object', ->
-      test_attributes =
-        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": [ "tuser@example.com" ]
-        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": [ "Test User" ]
-        "http://schemas.xmlsoap.org/claims/Group": [ "Test Group" ]
+      it 'rejects a missing status', ->
+        assert not saml2.check_status_success(dom_from_test_file("response_no_status.xml")), "Did not get 'false' for invalid response."
 
-      expected =
-        email: "tuser@example.com"
-        name: "Test User"
-        group: "Test Group"
+    describe 'pretty_assertion_attributes', ->
+      it 'creates a correct user object', ->
+        test_attributes =
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": [ "tuser@example.com" ]
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name": [ "Test User" ]
+          "http://schemas.xmlsoap.org/claims/Group": [ "Test Group" ]
 
-      assert.deepEqual saml2.pretty_assertion_attributes(test_attributes), expected
+        expected =
+          email: "tuser@example.com"
+          name: "Test User"
+          group: "Test Group"
 
-  describe 'decrypt_assertion', =>
-    it 'decrypts and extracts an assertion', (done) =>
-      key = get_test_file("test.pem")
-      saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
-        assert not err?, "Got error: #{err}"
-        assert.equal result, get_test_file("good_response_decrypted.xml")
-        done()
+        assert.deepEqual saml2.pretty_assertion_attributes(test_attributes), expected
 
-    it 'errors if an incorrect key is used', (done) =>
-      key = get_test_file("test2.pem")
-      saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
-        assert (err instanceof Error), "Did not get expected error."
-        done()
+    describe 'decrypt_assertion', =>
+      it 'decrypts and extracts an assertion', (done) =>
+        key = get_test_file("test.pem")
+        saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
+          assert not err?, "Got error: #{err}"
+          assert.equal result, get_test_file("good_response_decrypted.xml")
+          done()
 
-  describe 'parse_response_header', =>
-    it 'correctly parses a response header', =>
-      response = saml2.parse_response_header @good_response_dom
-      assert.equal response.destination, 'https://sp.example.com/assert'
-      assert.equal response.in_response_to, '_1'
+      it 'errors if an incorrect key is used', (done) =>
+        key = get_test_file("test2.pem")
+        saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
+          assert (err instanceof Error), "Did not get expected error."
+          done()
 
-    it 'errors if there is no response', ->
-      # An assertion is not a response, so this should fail.
-      assert.throws -> saml2.parse_response_header dom_from_test_file("good_assertion.xml")
+    describe 'parse_response_header', =>
+      it 'correctly parses a response header', =>
+        response = saml2.parse_response_header @good_response_dom
+        assert.equal response.destination, 'https://sp.example.com/assert'
+        assert.equal response.in_response_to, '_1'
 
-    it 'errors if given a response with the wrong version', ->
-      assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
+      it 'errors if there is no response', ->
+        # An assertion is not a response, so this should fail.
+        assert.throws -> saml2.parse_response_header dom_from_test_file("good_assertion.xml")
 
-  describe 'parse_logout_request', =>
-    it 'correctly parses a logout request', =>
-      request = saml2.parse_logout_request dom_from_test_file('logout_request.xml')
-      assert.equal request.issuer, 'http://idp.example.com/metadata.xml'
-      assert.equal request.name_id, 'tstudent'
-      assert.equal request.session_index, '_2'
+      it 'errors if given a response with the wrong version', ->
+        assert.throws -> saml2.parse_response_header dom_from_test_file("response_bad_version.xml")
 
-  describe 'get_name_id', ->
-    it 'gets the correct NameID', ->
-      name_id = saml2.get_name_id dom_from_test_file('good_assertion.xml')
-      assert.equal name_id, 'tstudent'
+    describe 'parse_logout_request', =>
+      it 'correctly parses a logout request', =>
+        request = saml2.parse_logout_request dom_from_test_file('logout_request.xml')
+        assert.equal request.issuer, 'http://idp.example.com/metadata.xml'
+        assert.equal request.name_id, 'tstudent'
+        assert.equal request.session_index, '_2'
 
-    it 'parses assertions with explicit namespaces', ->
-      name_id = saml2.get_name_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
-      assert.equal name_id, 'tstudent'
+    describe 'get_name_id', ->
+      it 'gets the correct NameID', ->
+        name_id = saml2.get_name_id dom_from_test_file('good_assertion.xml')
+        assert.equal name_id, 'tstudent'
 
-  describe 'get_session_index', ->
-    it 'gets the correct session index', ->
-      session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')
-      assert.equal session_index, '_3'
+      it 'parses assertions with explicit namespaces', ->
+        name_id = saml2.get_name_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
+        assert.equal name_id, 'tstudent'
 
-  describe 'parse_assertion_attributes', ->
-    it 'correctly parses assertion attributes', ->
-      expected_attributes =
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
-          'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
-          'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+    describe 'get_session_index', ->
+      it 'gets the correct session index', ->
+        session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')
+        assert.equal session_index, '_3'
 
-      attributes = saml2.parse_assertion_attributes dom_from_test_file('good_assertion.xml')
-      assert.deepEqual attributes, expected_attributes
+    describe 'parse_assertion_attributes', ->
+      it 'correctly parses assertion attributes', ->
+        expected_attributes =
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
+            'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
+            'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
 
-    it 'correctly parses no assertion attributes', ->
-      attributes = saml2.parse_assertion_attributes dom_from_test_file('blank_assertion.xml')
-      assert.deepEqual attributes, {}
+        attributes = saml2.parse_assertion_attributes dom_from_test_file('good_assertion.xml')
+        assert.deepEqual attributes, expected_attributes
 
-  # Assert
-  describe 'assert', ->
+      it 'correctly parses no assertion attributes', ->
+        attributes = saml2.parse_assertion_attributes dom_from_test_file('blank_assertion.xml')
+        assert.deepEqual attributes, {}
+
+    describe 'set option defaults', ->
+      it 'sets defaults in the correct order', ->
+        options_top =
+          option1: "top"
+          option4: "top"
+        options_middle =
+          option1: "middle"
+          option2: "middle"
+          option5: "middle"
+        options_bottom =
+          option1: "bottom"
+          option2: "bottom"
+          option3: "bottom"
+          option6: "bottom"
+        expected_options =
+          option1: "top"
+          option2: "middle"
+          option3: "bottom"
+          option4: "top"
+          option5: "middle"
+          option6: "bottom"
+        actual_options = saml2.set_option_defaults options_top, options_middle, options_bottom
+        assert.deepEqual actual_options, expected_options
+
+  describe 'post assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        request_body:
+          SAMLResponse: get_test_file("post_response.xml")
 
-      sp.assert idp, { SAMLResponse: get_test_file("post_response.xml") }, (err, response) ->
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
         assert not err?, "Got error: #{err}"
-
         expected_response =
           response_header:
             id: '_2'
@@ -235,24 +272,102 @@ describe 'saml2', ->
         done()
 
     it 'errors if passed invalid data', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: get_test_file('test.crt')
+      resquest_options =
+        request_body:
+          SAMLResponse: 'FAIL'
 
-      sp.assert idp, { SAMLResponse: 'FAIL' }, (err, user) ->
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, resquest_options, (err, user) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
+  describe 'redirect assert', ->
+
+    it 'returns a user object with passed a valid AuthnResponse', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        request_body:
+          SAMLResponse: get_test_file("redirect_response.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.redirect_assert idp, request_options, (err, response) ->
+        assert not err?, "Got error: #{err}"
+        expected_response =
+          response_header:
+            id: '_2'
+            in_response_to: '_1'
+            destination: 'https://sp.example.com/assert'
+          type: 'authn_response'
+          user:
+            name_id: 'tstudent'
+            session_index: '_3'
+            given_name: 'Test',
+            email: 'tstudent@example.com',
+            ppid: 'tstudent',
+            group: 'CN=Students,CN=Users,DC=idp,DC=example,DC=com',
+            surname: 'Student',
+            common_name: 'Test Student',
+            attributes:
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': [ 'tstudent@example.com' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier': [ 'tstudent' ]
+              'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
+              'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
+              'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+        assert.deepEqual response, expected_response
+        # make sure response can be deflated, since redirect requests need to be inflated
+        zlib.deflateRaw new Buffer(response, 'base64'), (err, deflated) =>
+          assert not err?, "Got error: #{err}"
+          done()
+
   describe 'ServiceProvider', ->
+
     it 'can be constructed', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      sp = new saml2.ServiceProvider sp_options
       done()
 
-    it 'can create login url', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+    it 'can create login request url', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
 
       async.waterfall [
-        (cb_wf) -> sp.create_login_url idp, 'https://sp.example.com/assert', cb_wf
+        (cb_wf) -> sp.create_login_request_url idp, {assert_endpoint:'https://sp.example.com/assert'}, cb_wf
       ], (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
@@ -260,21 +375,45 @@ describe 'saml2', ->
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
-    it 'passes through RelayState in login url', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+    it 'passes through RelayState in create login request url', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
 
-      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.create_login_request_url idp, {assert_endpoint: 'https://sp.example.com/assert', relay_state: 'Some Relay State!'}, (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
         assert.equal parsed_url.query?.RelayState, 'Some Relay State!'
         done()
 
-    it 'can specify a nameid format', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+    it 'can specify a nameid format in create login request url', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+      request_options = 
+        assert_endpoint: 'https://sp.example.com/assert'
+        relay_state: 'Some Relay State!'
+        nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
 
-      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', {nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}, (err, login_url, id) ->
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.create_login_request_url idp, request_options, (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
         saml_request = new Buffer(parsed_url.query?.SAMLRequest, 'base64')
@@ -282,11 +421,24 @@ describe 'saml2', ->
           assert.notEqual result.toString('utf8').indexOf("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"), -1
           done()
 
-    it 'requests a namid format type of urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified if none is specified', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', 'other_service_cert'
+    it 'requests a nameid format type of urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified if none is specified', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+      request_options = 
+        assert_endpoint: 'https://sp.example.com/assert'
+        relay_state: 'Some Relay State!'
 
-      sp.create_login_url idp, 'https://sp.example.com/assert', 'Some Relay State!', (err, login_url, id) ->
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.create_login_request_url idp, request_options, (err, login_url, id) ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
         saml_request = new Buffer(parsed_url.query?.SAMLRequest, 'base64')
@@ -294,15 +446,97 @@ describe 'saml2', ->
           assert.notEqual result.toString('utf8').indexOf("urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"), -1
           done()
 
-    it 'can create logout url', (done) ->
-      sp = new saml2.ServiceProvider 'https://sp.example.com/metadata.xml', get_test_file('test.pem'), get_test_file('test.crt')
-      idp = new saml2.IdentityProvider 'https://idp.example.com/login', 'https://idp.example.com/logout', get_test_file('test.crt')
+    it 'can create logout request url using an idp', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: get_test_file('test.crt')
+      request_options =
+        name_id: 'name_id'
+        session_index: 'session_index'
+      
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
 
       async.waterfall [
-        (cb_wf) -> sp.create_logout_url idp, 'name_id', 'session_index', cb_wf
+        (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
       ], (err, logout_url) ->
         assert not err?, "Error creating logout URL: #{err}"
         parsed_url = url.parse logout_url, true
         assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
         assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
         done()
+
+    it 'can create logout request url using an string sso_logout_url', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_logout_url : 'https://idp.example.com/logout'
+      request_options =
+        name_id: 'name_id'
+        session_index: 'session_index'
+      
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
+      ], (err, logout_url) ->
+        assert not err?, "Error creating logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+        done()
+
+    it 'can create logout response url using an idp', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      sso_logout_url = 'https://idp.example.com/logout'
+      request_options =
+        in_response_to: '_1'
+
+      sp = new saml2.ServiceProvider sp_options
+
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_response_url sso_logout_url, request_options, cb_wf
+      ], (err, logout_url) ->
+        assert not err?, "Error creating response logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        assert parsed_url?.query?.SAMLResponse?, 'Could not find SAMLResponse in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutResponse is not signed'
+        done()
+
+    it 'can create logout response url using an string sso_logout_url', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      request_options =
+        in_response_to: '_1'
+
+      sso_logout_url = 'https://idp.example.com/logout'
+      sp = new saml2.ServiceProvider sp_options
+
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_response_url sso_logout_url, request_options, cb_wf
+      ], (err, logout_url) ->
+        assert not err?, "Error creating response logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        assert parsed_url?.query?.SAMLResponse?, 'Could not find SAMLResponse in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutResponse is not signed'
+        done()
+
+    it 'can create metadata', (done) ->
+      done()
