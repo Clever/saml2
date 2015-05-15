@@ -396,10 +396,10 @@ module.exports.ServiceProvider =
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
         if options.sign_get_request
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
+        else
           uri.query = SAMLRequest: deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
-        else
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         cb null, url.format(uri), id
 
     # Returns:
@@ -484,10 +484,10 @@ module.exports.ServiceProvider =
         return cb err if err?
         uri = url.parse identity_provider.sso_logout_url
         if options.sign_get_request
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
+        else
           uri.query = SAMLRequest: deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
-        else
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         cb null, url.format(uri)
 
     # Returns:
@@ -505,10 +505,10 @@ module.exports.ServiceProvider =
         return cb err if err?
         uri = url.parse identity_provider.sso_logout_url
         if options.sign_get_request
+          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
+        else
           uri.query = SAMLResponse: deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
-        else
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
         cb null, url.format(uri)
 
     # Returns:

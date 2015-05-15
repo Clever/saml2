@@ -459,7 +459,8 @@ describe 'saml2', ->
       request_options =
         name_id: 'name_id'
         session_index: 'session_index'
-      
+        sign_get_request: true
+
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
 
@@ -483,6 +484,7 @@ describe 'saml2', ->
       request_options =
         name_id: 'name_id'
         session_index: 'session_index'
+        sign_get_request: true
       
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
@@ -505,6 +507,7 @@ describe 'saml2', ->
       sso_logout_url = 'https://idp.example.com/logout'
       request_options =
         in_response_to: '_1'
+        sign_get_request: true
 
       sp = new saml2.ServiceProvider sp_options
 
@@ -525,6 +528,7 @@ describe 'saml2', ->
         assert_endpoint: 'https://sp.example.com/assert'
       request_options =
         in_response_to: '_1'
+        sign_get_request: true
 
       sso_logout_url = 'https://idp.example.com/logout'
       sp = new saml2.ServiceProvider sp_options
