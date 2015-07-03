@@ -234,6 +234,7 @@ var idp = new saml2.IdentityProvider(idp_options);
 
 // Endpoint to retrieve metadata
 app.get("/metadata.xml", function(req, res) {
+  res.type('application/xml');
   res.send(sp.create_metadata());
 });
 
