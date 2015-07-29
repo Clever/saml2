@@ -197,6 +197,13 @@ describe 'saml2', ->
         attributes = saml2.parse_assertion_attributes dom_from_test_file('good_assertion.xml')
         assert.deepEqual attributes, expected_attributes
 
+      it 'correctly parses assertion attributes', ->
+        expected_attributes =
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ '' ]
+
+        attributes = saml2.parse_assertion_attributes dom_from_test_file('empty_attribute_value.xml')
+        assert.deepEqual attributes, expected_attributes
+
       it 'correctly parses no assertion attributes', ->
         attributes = saml2.parse_assertion_attributes dom_from_test_file('blank_assertion.xml')
         assert.deepEqual attributes, {}

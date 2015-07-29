@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion" ID="_3" IssueInstant="2014-03-12T21:35:05.392Z" Version="2.0">
+  <Issuer>http://idp.example.com/metadata.xml</Issuer>
+  <Subject>
+    <NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient">tstudent</NameID>
+    <SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+      <SubjectConfirmationData InResponseTo="_4" NotOnOrAfter="2014-03-12T21:40:05.392Z" Recipient="https://sp.example.com/assert"/>
+    </SubjectConfirmation>
+  </Subject>
+  <AttributeStatement>
+    <Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname">
+      <AttributeValue/>
+    </Attribute>
+  </AttributeStatement>
+  <AuthnStatement AuthnInstant="2014-03-12T21:35:05.354Z" SessionIndex="_3">
+    <AuthnContext>
+      <AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AuthnContextClassRef>
+    </AuthnContext>
+  </AuthnStatement>
+</Assertion>
