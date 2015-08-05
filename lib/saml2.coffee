@@ -62,11 +62,11 @@ create_metadata = (entity_id, assert_endpoint, signing_certificate, encryption_c
           { 'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate) },
           'md:AssertionConsumerService':
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
-            '@Location': assert_endpoint
+            '@Location': assert_endpoint.sso_login_url
             '@index': '0'
           'md:SingleLogoutService':
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-            '@Location': assert_endpoint
+            '@Location': assert_endpoint.sso_logout_url
         ]
   .end()
 
