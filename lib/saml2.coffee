@@ -60,13 +60,13 @@ create_metadata = (entity_id, assert_endpoint, signing_certificate, encryption_c
           '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol',
           { 'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate) },
           { 'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate) },
+          'md:SingleLogoutService':
+            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+            '@Location': assert_endpoint
           'md:AssertionConsumerService':
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
             '@Location': assert_endpoint
             '@index': '0'
-          'md:SingleLogoutService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-            '@Location': assert_endpoint
         ]
   .end()
 
@@ -501,7 +501,7 @@ module.exports.ServiceProvider =
     create_logout_response_url: (identity_provider, options, cb) ->
       identity_provider = { sso_logout_url: identity_provider, options: {} } if _.isString(identity_provider)
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
-      
+
       xml = create_logout_response @entity_id, options.in_response_to, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
