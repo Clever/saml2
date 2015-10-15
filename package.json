@@ -32,7 +32,7 @@
     "async-ext": "~0.1.4",
     "debug": "^1.0.4",
     "underscore": "~1.6.0",
-    "xml-crypto": "0.0.22",
+    "xml-crypto": "^0.8.1",
     "xml-encryption": "~0.7.0",
     "xml2js": "~0.4.1",
     "xmlbuilder": "~2.1.0",
