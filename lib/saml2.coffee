@@ -325,7 +325,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
 # issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
 # is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted, cb) ->
+parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted, ignore_signature, cb) ->
   user = {}
   decrypted_assertion = null
 
@@ -341,7 +341,7 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_u
     (result, cb_wf) ->
       debug result
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-      unless _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
+      unless ignore_signature || _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
         return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
       cb_wf null
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
@@ -457,7 +457,7 @@ module.exports.ServiceProvider =
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificates, options.allow_unencrypted_assertion, cb_wf
+              parse_authn_response saml_response, @private_key, identity_provider.certificates, options.allow_unencrypted_assertion, options.ignore_signature, cb_wf
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               unless check_status_success(saml_response)
                 cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
