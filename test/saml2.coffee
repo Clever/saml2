@@ -112,6 +112,9 @@ describe 'saml2', ->
       it 'rejects xml with an invalid signature', ->
         assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
+      it 'if multiple signatures exist it validates all signatures', ->
+        assert saml2.check_saml_signature(get_test_file("good_assertion_multiple.xml"), get_test_file("test.crt"))
+
     describe 'check_status_success', =>
       it 'accepts a valid success status', =>
         assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
@@ -344,7 +347,7 @@ describe 'saml2', ->
               'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
         assert.deepEqual response, expected_response
         # make sure response can be deflated, since redirect requests need to be inflated
-        zlib.deflateRaw new Buffer(response, 'base64'), (err, deflated) =>
+        zlib.deflateRaw new Buffer(JSON.stringify(response), 'base64'), (err, deflated) =>
           assert not err?, "Got error: #{err}"
           done()
 
@@ -412,7 +415,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
         nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
@@ -438,7 +441,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
 
@@ -492,7 +495,7 @@ describe 'saml2', ->
         name_id: 'name_id'
         session_index: 'session_index'
         sign_get_request: true
-      
+
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
 
