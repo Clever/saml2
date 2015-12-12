@@ -278,6 +278,37 @@ describe 'saml2', ->
         assert.deepEqual response, expected_response
         done()
 
+    it 'allows the signature to be embedded outside of the assertion', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt') ]
+      request_options =
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("post_response_outer_signature.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert not err?, "Got error: #{err}"
+        expected_response =
+          response_header: {}
+          type: 'authn_response'
+          user:
+            name_id: 'Benjamin',
+            session_index: 'b07b804c-7c29-ea16-7300-4f3d6f7928ac'
+            attributes: {}
+
+        assert.deepEqual response, expected_response
+        done()
+
     it 'errors if passed invalid data', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
@@ -412,7 +443,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
         nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
@@ -438,7 +469,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
 
@@ -492,7 +523,7 @@ describe 'saml2', ->
         name_id: 'name_id'
         session_index: 'session_index'
         sign_get_request: true
-      
+
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
 

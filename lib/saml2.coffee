@@ -337,7 +337,7 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_u
         assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
         unless assertion.length is 1
           return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
-        cb_wf null, assertion[0].toString()
+        cb_wf null, saml_response.toString()
     (result, cb_wf) ->
       debug result
       decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
@@ -541,4 +541,3 @@ if process.env.NODE_ENV is "test"
   module.exports.get_session_index = get_session_index
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.set_option_defaults = set_option_defaults
-
