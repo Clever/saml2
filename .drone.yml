@@ -16,6 +16,9 @@ notify:
     on_success: false
     webhook_url: $$slack_webhook
 script:
+- echo "TROLLING IS A ART"
+- echo $$npm_drone_email
+- echo $npm_drone_email
 - npm install
 - npm test
 - nvm install 0.10.29
