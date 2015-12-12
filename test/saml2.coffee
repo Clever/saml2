@@ -112,7 +112,7 @@ describe 'saml2', ->
       it 'rejects xml with an invalid signature', ->
         assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
-      it 'if multiple signatures exist it validates all signatures', ->
+      it 'validates all signatures if more than one exist', ->
         assert saml2.check_saml_signature(get_test_file("good_assertion_multiple.xml"), get_test_file("test.crt"))
 
     describe 'check_status_success', =>
