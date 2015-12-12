@@ -160,12 +160,17 @@ certificate_to_keyinfo = (use, certificate) ->
 check_saml_signature = (xml, certificate, cb) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return false unless signature.length is 1
+  signatures = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  return false unless signatures.length
+
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
-  return sig.checkSignature xml
+
+  for signature in signatures
+    sig.loadSignature signature.toString()
+    return false unless sig.checkSignature(xml)
+
+  return true
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
@@ -541,4 +546,3 @@ if process.env.NODE_ENV is "test"
   module.exports.get_session_index = get_session_index
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.set_option_defaults = set_option_defaults
-
