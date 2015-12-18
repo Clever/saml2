@@ -154,18 +154,43 @@ certificate_to_keyinfo = (use, certificate) ->
           cert_data.replace(/[\r\n|\n]/g, '')
   }
 
-# This function calls @cb with no error if an XML document is signed with the provided cert. This is NOT sufficient for
-# signature checks as it doesn't verify the signature is signing the important content, nor is it preventing the
-# parsing of unsigned content.
-check_saml_signature = (xml, certificate, cb) ->
+# This checks the signature of a saml document and returns either array containing the signed data if valid, or null
+# if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
+# verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
+check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return false unless signature.length is 1
+  return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
-  return sig.checkSignature xml
+  valid = sig.checkSignature xml
+  if valid
+    return get_signed_data(doc, sig.references)
+  else
+    return null
+
+# Gets the data that is actually signed according to xml-crypto. This function should mirror the way xml-crypto finds
+# elements for security reasons.
+get_signed_data = (doc, references) ->
+  _.map references, (ref) ->
+    uri = ref.uri
+    if uri[0] is '#'
+      uri = uri.substring(1)
+
+    elem = []
+    if uri is ""
+      elem = xmlcrypto.xpath(doc, "//*")
+    else
+      for idAttribute in ["Id", "ID"]
+        elem = xmlcrypto.xpath(doc, "//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']")
+        if elem.length > 0
+          break
+
+    unless elem.length > 0
+      throw new Error("Invalid signature; must be a reference to '#{ref.uri}'")
+    elem[0].toString()
 
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
@@ -340,10 +365,23 @@ parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_u
         cb_wf null, assertion[0].toString()
     (result, cb_wf) ->
       debug result
-      decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-      unless ignore_signature || _.some(idp_certificates, (cert) -> check_saml_signature result, cert)
-        return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
-      cb_wf null
+      if ignore_signature
+        decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
+        return cb_wf null
+
+      for cert in idp_certificates
+        signed_data = check_saml_signature result, cert
+        unless signed_data
+          continue # Cert was not valid, try the next one
+
+        for sd in signed_data
+          signed_dom = (new xmldom.DOMParser()).parseFromString(sd)
+          assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
+          if assertion.length is 1
+            decrypted_assertion = signed_dom
+            return cb_wf null
+        return cb_wf new Error("Signed data did not contain a SAML Assertion!")
+      return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
     (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
     (name_id, cb_wf) ->
       user.name_id = name_id

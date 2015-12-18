@@ -104,13 +104,14 @@ describe 'saml2', ->
 
     describe 'check_saml_signature', ->
       it 'accepts signed xml', ->
-        assert saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
+        result = saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
+        assert.deepEqual result, [get_test_file("good_assertion.xml")]
 
       it 'rejects xml without a signature', ->
-        assert.equal false, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
+        assert.equal null, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
 
       it 'rejects xml with an invalid signature', ->
-        assert.equal false, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
+        assert.equal null, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
     describe 'check_status_success', =>
       it 'accepts a valid success status', =>
@@ -296,6 +297,28 @@ describe 'saml2', ->
       idp = new saml2.IdentityProvider idp_options
 
       sp.post_assert idp, resquest_options, (err, user) ->
+        assert (err instanceof Error), "Did not get expected error."
+        done()
+
+    it "rejects a signed response if the assertion isn't signed", (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url: 'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt') ]
+        allow_unencrypted_assertion: true
+      request_options =
+        request_body:
+          SAMLResponse: get_test_file("response_unsigned_assertion.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
