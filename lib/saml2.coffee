@@ -154,10 +154,10 @@ certificate_to_keyinfo = (use, certificate) ->
           cert_data.replace(/[\r\n|\n]/g, '')
   }
 
-# This function calls @cb with no error if an XML document is signed with the provided cert. This is NOT sufficient for
-# signature checks as it doesn't verify the signature is signing the important content, nor is it preventing the
-# parsing of unsigned content.
-check_saml_signature = (xml, certificate, cb) ->
+# This checks the signature of a saml document and returns either array containing the signed data if valid, or null
+# if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
+# verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
+check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
