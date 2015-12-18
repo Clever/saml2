@@ -1,4 +1,3 @@
-<?xml version="1.0"?>
 <Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion" ID="_3" IssueInstant="2014-03-12T21:35:05.392Z" Version="2.0">
   <Issuer>http://idp.example.com/metadata.xml</Issuer>
   <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
