@@ -13,6 +13,9 @@ describe 'saml2', ->
   get_test_file = (filename) ->
     fs.readFileSync("#{__dirname}/data/#{filename}").toString()
 
+  has_attribute = (node, attr_name, attr_value) ->
+    _(node.attributes).some (attr) -> attr.name is attr_name and attr.value is attr_value
+
   describe 'private helpers', ->
 
     dom_from_test_file = (filename) ->
@@ -51,26 +54,84 @@ describe 'saml2', ->
         assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
     describe 'create_metadata', ->
-      it 'contains expected fields', ->
-        cert = get_test_file 'test.crt'
-        cert2 = get_test_file 'test2.crt'
+      CERT_1 = get_test_file 'test.crt'
+      CERT_2 = get_test_file 'test2.crt'
 
-        metadata = saml2.create_metadata 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', cert, cert2
-        dom = (new xmldom.DOMParser()).parseFromString metadata
+      CERT_1_DATA = saml2.extract_certificate_data CERT_1
+      CERT_2_DATA = saml2.extract_certificate_data CERT_2
 
-        entity_descriptor = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
-        assert _(entity_descriptor.attributes).some((attr) -> attr.name is 'entityID' and attr.value is 'https://sp.example.com/metadata.xml')
-          , "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'."
+      METADATA =
+        saml2.create_metadata(
+          'https://sp.example.com/metadata.xml',
+          'https://sp.example.com/assert',
+          [CERT_1],
+          [CERT_1, CERT_2])
 
-        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')).some((assertion) ->
-          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') and
-            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
-          , "Expected to find an AssertionConsumerService with POST binding and location 'https://sp.example.com/assert'"
+      dom = (new xmldom.DOMParser()).parseFromString METADATA
+      entity_descriptor =
+        dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor')[0]
 
-        assert _(entity_descriptor.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'SingleLogoutService')).some((assertion) ->
-          _(assertion.attributes).some((attr) -> attr.name is 'Binding' and attr.value is 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect') and
-            _(assertion.attributes).some((attr) -> attr.name is 'Location' and attr.value is 'https://sp.example.com/assert'))
-          , "Expected to find a SingleLogoutService with redirect binding and location 'https://sp.example.com/assert'"
+      it 'contains expected entity id', ->
+        assert(
+          has_attribute entity_descriptor, 'entityID', 'https://sp.example.com/metadata.xml',
+          "Expected to find attribute 'entityID' with value 'https://sp.example.com/metadata.xml'.")
+
+      it 'contains expected key descriptors', ->
+        key_descriptors = entity_descriptor.getElementsByTagNameNS(
+          'urn:oasis:names:tc:SAML:2.0:metadata', 'KeyDescriptor')
+
+        assert.equal(
+          key_descriptors.length, 3, "Expected 3 key descriptors; found #{key_descriptors.length}")
+
+        assert(
+          has_attribute key_descriptors[0], 'use', 'signing',
+          "Expected 1st key descriptor to have attribute 'use' with value 'signing'.")
+
+        assert(
+          has_attribute key_descriptors[1], 'use', 'encryption',
+          "Expected 2nd key descriptor to have attribute 'use' with value 'encryption'.")
+
+        assert(
+          has_attribute key_descriptors[2], 'use', 'encryption',
+          "Expected 3rd key descriptor to have attribute 'use' with value 'encryption'.")
+
+        signing_cert = key_descriptors[0].getElementsByTagNameNS(
+          'http://www.w3.org/2000/09/xmldsig#', 'X509Certificate')[0].firstChild
+        assert.equal signing_cert, CERT_1_DATA, 'Unexpected value for signing cert.'
+
+        encryption_cert_1 = key_descriptors[1].getElementsByTagNameNS(
+          'http://www.w3.org/2000/09/xmldsig#', 'X509Certificate')[0].firstChild
+        assert.equal encryption_cert_1, CERT_1_DATA, 'Unexpected value for 1st encryption cert.'
+
+        encryption_cert_2 = key_descriptors[2].getElementsByTagNameNS(
+          'http://www.w3.org/2000/09/xmldsig#', 'X509Certificate')[0].firstChild
+        assert.equal encryption_cert_2, CERT_2_DATA, 'Unexpected value for 2nd encryption cert.'
+
+      it 'contains expected service URLs', ->
+        consumer_service = entity_descriptor.getElementsByTagNameNS(
+          'urn:oasis:names:tc:SAML:2.0:metadata', 'AssertionConsumerService')[0]
+
+        assert(
+          has_attribute(
+            consumer_service, 'Binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'),
+          "Expected to find an AssertionConsumerService with POST binding.")
+
+        assert(
+          has_attribute consumer_service, 'Location', 'https://sp.example.com/assert',
+          "Expected to find an AssertionConsumerService with location
+            'htps://sp.example.com/assert'")
+
+        logout_service = entity_descriptor.getElementsByTagNameNS(
+          'urn:oasis:names:tc:SAML:2.0:metadata', 'SingleLogoutService')[0]
+
+        assert(
+          has_attribute(
+            logout_service, 'Binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
+          "Expected to find an SingleLogoutService with redirect binding.")
+
+        assert(
+          has_attribute logout_service, 'Location', 'https://sp.example.com/assert',
+          "Expected to find an SingleLogoutService with location 'htps://sp.example.com/assert'")
 
     describe 'format_pem', ->
       it 'formats an unformatted private key', ->
@@ -138,16 +199,17 @@ describe 'saml2', ->
         assert.deepEqual saml2.pretty_assertion_attributes(test_attributes), expected
 
     describe 'decrypt_assertion', =>
-      it 'decrypts and extracts an assertion', (done) =>
-        key = get_test_file("test.pem")
-        saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
+      KEY_1 = get_test_file("test.pem")
+      KEY_2 = get_test_file("test2.pem")
+
+      it 'decrypts and extracts an assertion with all availble keys', (done) =>
+        saml2.decrypt_assertion @good_response_dom, [KEY_2, KEY_1], (err, result) ->
           assert not err?, "Got error: #{err}"
           assert.equal result, get_test_file("good_response_decrypted.xml")
           done()
 
       it 'errors if an incorrect key is used', (done) =>
-        key = get_test_file("test2.pem")
-        saml2.decrypt_assertion @good_response_dom, key, (err, result) ->
+        saml2.decrypt_assertion @good_response_dom, [KEY_2], (err, result) ->
           assert (err instanceof Error), "Did not get expected error."
           done()
 
@@ -233,12 +295,14 @@ describe 'saml2', ->
         actual_options = saml2.set_option_defaults options_top, options_middle, options_bottom
         assert.deepEqual actual_options, expected_options
 
-  describe 'post assert', ->
+  describe 'post_assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
-        private_key: get_test_file('test.pem')
-        certificate: get_test_file('test.crt')
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
         assert_endpoint: 'https://sp.example.com/assert'
       idp_options =
         sso_login_url: 'https://idp.example.com/login'

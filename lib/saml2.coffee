@@ -49,18 +49,25 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
   .end()
   { id, xml }
 
-# Creates metadata and returns it as a string of xml. The metadata has one POST assertion endpoint.
-create_metadata = (entity_id, assert_endpoint, signing_certificate, encryption_certificate) ->
+# Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
+create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
+  singing_cert_descriptors = for signing_certificate in signing_certificates
+    {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
+
+  encryption_cert_descriptors = for encryption_certificate in encryption_certificates
+    {'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate)}
+
   xmlbuilder.create
     'md:EntityDescriptor':
       '@xmlns:md': XMLNS.MD
       '@xmlns:ds': XMLNS.DS
       '@entityID': entity_id
-      '@validUntil': (new Date(Date.now() + 1000*60*60)).toISOString()
-      'md:SPSSODescriptor': [
-          '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol',
-          { 'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate) },
-          { 'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate) },
+      '@validUntil': (new Date(Date.now() + 1000 * 60 * 60)).toISOString()
+      'md:SPSSODescriptor': []
+        .concat {'@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'}
+        .concat singing_cert_descriptors
+        .concat encryption_cert_descriptors
+        .concat [
           'md:SingleLogoutService':
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
             '@Location': assert_endpoint
@@ -141,18 +148,21 @@ sign_request = (saml_request, private_key, relay_state, response=false) ->
 
 # Converts a pem certificate to a KeyInfo object for use with XML.
 certificate_to_keyinfo = (use, certificate) ->
-  cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
-  cert_data = if cert_data? then cert_data[1] else certificate
-  throw new Error('Invalid Certificate') unless cert_data?
-
   {
     '@use': use
     'ds:KeyInfo':
       '@xmlns:ds': XMLNS.DS
       'ds:X509Data':
-        'ds:X509Certificate':
-          cert_data.replace(/[\r\n|\n]/g, '')
+        'ds:X509Certificate': extract_certificate_data certificate
   }
+
+# Returns the raw certificate data with all extraneous characters removed.
+extract_certificate_data = (certificate) ->
+  cert_data = /-----BEGIN CERTIFICATE-----([^-]*)-----END CERTIFICATE-----/g.exec certificate
+  cert_data = if cert_data? then cert_data[1] else certificate
+  throw new Error('Invalid Certificate') unless cert_data?
+
+  return cert_data.replace(/[\r\n]/g, '')
 
 # This checks the signature of a saml document and returns either array containing the signed data if valid, or null
 # if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
@@ -225,21 +235,36 @@ to_error = (err) ->
   return new Error(util.inspect err) unless err instanceof Error
   err
 
-# Takes in an xml @dom of an object containing an EncryptedAssertion and attempts to decrypt it using the @private_key.
-# @cb will be called with an error if the decryption fails, or the EncryptedAssertion cannot be found. If successful,
-# it will be called with the decrypted data as a string.
-decrypt_assertion = (dom, private_key, cb) ->
-  # This is needed because xmlenc sometimes throws an exception, and sometimes calls the passed in callback.
+# Takes in an XML @dom of an object containing an EncryptedAssertion and attempts to decrypt it
+# using the @private_keys in the given order.
+#
+# @cb will be called with an error if the decryption fails, or the EncryptedAssertion cannot be
+# found. If successful, it will be called with the decrypted data as a string.
+decrypt_assertion = (dom, private_keys, cb) ->
+  # This is needed because xmlenc sometimes throws an exception, and sometimes calls the passed-in
+  # callback.
   cb = _.wrap cb, (fn, err, args...) -> setTimeout (-> fn to_error(err), args...), 0
 
   try
     encrypted_assertion = dom.getElementsByTagNameNS(XMLNS.SAML, 'EncryptedAssertion')
-    return cb new Error("Expected 1 EncryptedAssertion; found #{encrypted_assertion.length}.") unless encrypted_assertion.length is 1
+    unless encrypted_assertion.length is 1
+      return cb new Error("Expected 1 EncryptedAssertion; found #{encrypted_assertion.length}.")
 
     encrypted_data = encrypted_assertion[0].getElementsByTagNameNS(XMLNS.XENC, 'EncryptedData')
-    return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.") unless encrypted_data.length is 1
+    unless encrypted_data.length is 1
+      return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.")
 
-    xmlenc.decrypt encrypted_data[0].toString(), (key: format_pem(private_key, 'PRIVATE KEY')), cb
+    encrypted_data = encrypted_data[0].toString()
+    errors = []
+    async.eachOfSeries private_keys, (private_key, index, cb_e) ->
+      xmlenc.decrypt encrypted_data, {key: format_pem(private_key, 'PRIVATE KEY')}, (err, result) ->
+        if err?
+          errors.push new Error("Decrypt failed: #{util.inspect err}") if err?
+          return cb_e()
+
+        debug "Decryption successful with private key ##{index}."
+        cb null, result
+    , -> cb new Error("Failed to decrypt assertion with provided key(s): #{util.inspect errors}")
   catch err
     cb new Error("Decrypt failed: #{util.inspect err}")
 
@@ -347,16 +372,16 @@ pretty_assertion_attributes = (assertion_attributes) ->
     .object()
     .value()
 
-# Takes a dom of a saml_response, a private key used to decrypt it and the certificate of the identity provider that
-# issued it and will return a user object containing the attributes or an error if keys are incorrect or the response
-# is invalid.
-parse_authn_response = (saml_response, sp_private_key, idp_certificates, allow_unencrypted, ignore_signature, cb) ->
+# Takes a DOM of a saml_response, private keys with which to attempt decryption and the
+# certificate(s) of the identity provider that issued it and will return a user object containing
+# the attributes or an error if keys are incorrect or the response is invalid.
+parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, cb) ->
   user = {}
   decrypted_assertion = null
 
   async.waterfall [
     (cb_wf) ->
-      decrypt_assertion saml_response, sp_private_key, (err, result) ->
+      decrypt_assertion saml_response, sp_private_keys, (err, result) ->
         return cb_wf null, result unless err?
         return cb_wf err, result unless allow_unencrypted
         assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
@@ -415,12 +440,23 @@ set_option_defaults = (request_options, idp_options, sp_options) ->
 
 module.exports.ServiceProvider =
   class ServiceProvider
-    # Initializes a service provider given the passed options
-    # @entity_id, @private_key, @certificate, @assert_endpoint can only be set here and are used by exported functions.
+    # Initializes a service provider given the passed options.
+    #
+    # @entity_id, @private_key, @assert_endpoint, @certificate, @alt_private_keys, @alt_certs can
+    # only be set here and are used by exported functions.
+    #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint} = options
-      @shared_options = _.pick(options, "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
+      for option in ['entity_id', 'private_key', 'certificate', 'assert_endpoint']
+        throw new Error("#{option} is required") unless options[option]?
+
+      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
+
+      @alt_private_keys = [].concat(@alt_private_keys or [])
+      @alt_certs = [].concat(@alt_certs or [])
+
+      @shared_options = _(options).pick(
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -480,30 +516,44 @@ module.exports.ServiceProvider =
       async.waterfall [
         (cb_wf) ->
           raw = new Buffer(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
+
           # Inflate response for redirect requests before parsing it.
           if (options.get_request)
             return zlib.inflateRaw raw, cb_wf
           setImmediate cb_wf, null, raw
+
         (response_buffer, cb_wf) ->
           debug saml_response
           saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
           async.lift(parse_response_header) saml_response, cb_wf
+
         (response_header, cb_wf) =>
           response = { response_header }
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               unless check_status_success(saml_response)
-                cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
+                cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
+
               response.type = 'authn_response'
-              parse_authn_response saml_response, @private_key, identity_provider.certificates, options.allow_unencrypted_assertion, options.ignore_signature, cb_wf
+              parse_authn_response(
+                saml_response,
+                [@private_key].concat(@alt_private_keys),
+                identity_provider.certificates,
+                options.allow_unencrypted_assertion,
+                options.ignore_signature,
+                cb_wf)
+
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               unless check_status_success(saml_response)
-                cb_wf new SAMLError("SAML Response was not success!", { status: get_status(saml_response) })
+                cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
+
               response.type = 'logout_response'
               setImmediate cb_wf, null, {}
+
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutRequest').length is 1
               response.type = 'logout_request'
               setImmediate cb_wf, null, parse_logout_request saml_response
+
         (result, cb_wf) ->
           _.extend response, result
           cb_wf null, response
@@ -555,7 +605,8 @@ module.exports.ServiceProvider =
     # Returns:
     #   XML metadata, used during initial SAML configuration
     create_metadata: =>
-      create_metadata @entity_id, @assert_endpoint, @certificate, @certificate
+      certs = [@certificate].concat @alt_certs
+      create_metadata @entity_id, @assert_endpoint, certs, certs
 
 module.exports.IdentityProvider =
   class IdentityProvider
@@ -579,4 +630,5 @@ if process.env.NODE_ENV is "test"
   module.exports.get_session_index = get_session_index
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.set_option_defaults = set_option_defaults
+  module.exports.extract_certificate_data = extract_certificate_data
 
