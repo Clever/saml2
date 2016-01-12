@@ -39,6 +39,8 @@ An object that can contain the below options.  All options are strings, unless s
 - `private_key` - **Required** - (PEM format string) - Private key for the service provider.
 - `certificate` - **Required** - (PEM format string) - Certificate for the service provider.
 - `assert_endpoint` - **Required** - URL of service provider assert endpoint.
+- `alt_private_keys` - (Array of PEM format strings) - Additional private keys to use when attempting to decrypt responses. Useful for adding backward-compatibility for old certificates after a rollover.
+- `alt_certs` - (Array of PEM format strings) - Additional certificates to expose in the SAML metadata. Useful for staging new certificates for rollovers.
 - `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
