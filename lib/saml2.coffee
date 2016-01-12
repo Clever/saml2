@@ -51,7 +51,7 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
 create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
-  singing_cert_descriptors = for signing_certificate in signing_certificates
+  signing_cert_descriptors = for signing_certificate in signing_certificates
     {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
 
   encryption_cert_descriptors = for encryption_certificate in encryption_certificates
@@ -65,7 +65,7 @@ create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_
       '@validUntil': (new Date(Date.now() + 1000 * 60 * 60)).toISOString()
       'md:SPSSODescriptor': []
         .concat {'@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'}
-        .concat singing_cert_descriptors
+        .concat signing_cert_descriptors
         .concat encryption_cert_descriptors
         .concat [
           'md:SingleLogoutService':
@@ -447,9 +447,6 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      for option in ['entity_id', 'private_key', 'certificate', 'assert_endpoint']
-        throw new Error("#{option} is required") unless options[option]?
-
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
       @alt_private_keys = [].concat(@alt_private_keys or [])
