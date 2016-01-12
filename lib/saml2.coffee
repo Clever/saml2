@@ -447,9 +447,6 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      for option in ['entity_id', 'private_key', 'certificate', 'assert_endpoint']
-        throw new Error("#{option} is required") unless options[option]?
-
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
       @alt_private_keys = [].concat(@alt_private_keys or [])
