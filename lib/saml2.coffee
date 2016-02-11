@@ -1,5 +1,5 @@
 _             = require 'underscore'
-async         = _.extend require('async'), require('async-ext')
+async         = require 'async'
 crypto        = require 'crypto'
 debug         = require('debug') 'saml2'
 {parseString} = require 'xml2js'
@@ -377,7 +377,6 @@ pretty_assertion_attributes = (assertion_attributes) ->
 # the attributes or an error if keys are incorrect or the response is invalid.
 parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, cb) ->
   user = {}
-  decrypted_assertion = null
 
   async.waterfall [
     (cb_wf) ->
@@ -391,8 +390,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
     (result, cb_wf) ->
       debug result
       if ignore_signature
-        decrypted_assertion = (new xmldom.DOMParser()).parseFromString(result)
-        return cb_wf null
+        return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
 
       for cert in idp_certificates
         signed_data = check_saml_signature result, cert
@@ -403,21 +401,19 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
           signed_dom = (new xmldom.DOMParser()).parseFromString(sd)
           assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
           if assertion.length is 1
-            decrypted_assertion = signed_dom
-            return cb_wf null
+            return cb_wf null, signed_dom
         return cb_wf new Error("Signed data did not contain a SAML Assertion!")
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
-    (cb_wf) -> async.lift(get_name_id) decrypted_assertion, cb_wf
-    (name_id, cb_wf) ->
-      user.name_id = name_id
-      async.lift(get_session_index) decrypted_assertion, cb_wf
-    (session_index, cb_wf) ->
-      user.session_index = session_index
-      async.lift(parse_assertion_attributes) decrypted_assertion, cb_wf
-    (assertion_attributes, cb_wf) ->
-      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-      user = _.extend user, attributes: assertion_attributes
-      cb_wf null, { user }
+    (decrypted_assertion, cb_wf) ->
+      try
+        user.name_id = get_name_id decrypted_assertion
+        user.session_index = get_session_index decrypted_assertion
+        assertion_attributes = parse_assertion_attributes decrypted_assertion
+        user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+        user = _.extend user, attributes: assertion_attributes
+        cb_wf null, { user }
+      catch err
+        return cb_wf err
   ], cb
 
 parse_logout_request = (dom) ->
@@ -519,13 +515,14 @@ module.exports.ServiceProvider =
             return zlib.inflateRaw raw, cb_wf
           setImmediate cb_wf, null, raw
 
-        (response_buffer, cb_wf) ->
+        (response_buffer, cb_wf) =>
           debug saml_response
           saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
-          async.lift(parse_response_header) saml_response, cb_wf
 
-        (response_header, cb_wf) =>
-          response = { response_header }
+          try
+            response = { response_header: parse_response_header(saml_response) }
+          catch err
+            return cb err
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               unless check_status_success(saml_response)
