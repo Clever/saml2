@@ -386,6 +386,43 @@ describe 'saml2', ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
+    it 'correctly parses an empty NameID', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("empty_nameid.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert not err?, "Got error: #{err}"
+        expected_response =
+          response_header:
+            id: '_2'
+            in_response_to: '_1'
+            destination: 'https://sp.example.com/assert'
+          type: 'authn_response'
+          user:
+            name_id: undefined
+            session_index: '_4'
+            attributes: {}
+
+        assert.deepEqual response, expected_response
+        done()
+
   describe 'redirect assert', ->
 
     it 'returns a user object with passed a valid AuthnResponse', (done) ->
@@ -430,10 +467,7 @@ describe 'saml2', ->
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
               'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
         assert.deepEqual response, expected_response
-        # make sure response can be deflated, since redirect requests need to be inflated
-        zlib.deflateRaw new Buffer(response, 'base64'), (err, deflated) =>
-          assert not err?, "Got error: #{err}"
-          done()
+        done()
 
   describe 'ServiceProvider', ->
 
