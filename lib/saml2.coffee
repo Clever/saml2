@@ -51,10 +51,10 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
 create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
-  signing_cert_descriptors = for signing_certificate in signing_certificates
+  signing_cert_descriptors = for signing_certificate in signing_certificates or []
     {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
 
-  encryption_cert_descriptors = for encryption_certificate in encryption_certificates
+  encryption_cert_descriptors = for encryption_certificate in encryption_certificates or []
     {'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate)}
 
   xmlbuilder.create
@@ -206,10 +206,10 @@ get_signed_data = (doc, references) ->
 check_status_success = (dom) ->
   status = dom.getElementsByTagNameNS(XMLNS.SAMLP, 'Status')
   return false unless status.length is 1
-  for status_code in status[0].childNodes
+  for status_code in status[0].childNodes or []
     if status_code.attributes?
-      for attr in status_code.attributes
-        return true if attr.name is 'Value' and attr.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+      for attr in status_code.attributes or []
+        return true if attr?.name is 'Value' and attr?.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   false
 
 get_status = (dom) ->
@@ -217,17 +217,17 @@ get_status = (dom) ->
   status = dom.getElementsByTagNameNS(XMLNS.SAMLP, 'Status')
   return status_list unless status.length is 1
 
-  for status_code in status[0].childNodes
+  for status_code in status[0].childNodes or []
     if status_code.attributes?
-      for attr in status_code.attributes
-        if attr.name is 'Value'
+      for attr in status_code?.attributes or []
+        if attr?.name is 'Value'
           top_status = attr.value
           status_list[top_status] ?= []
-    for sub_status_code in status_code.childNodes
-      if sub_status_code.attributes?
-        for attr in sub_status_code.attributes
-          if attr.name is 'Value'
-            status_list[top_status].push attr.value
+    for sub_status_code in status_code.childNodes or []
+      if sub_status_code?.attributes?
+        for attr in sub_status_code.attributes or []
+          if attr?.name is 'Value'
+            status_list[top_status].push attr?.value
   status_list
 
 to_error = (err) ->
@@ -278,8 +278,8 @@ parse_response_header = (dom) ->
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
   response_header = {}
-  for attr in response[0].attributes
-    switch attr.name
+  for attr in response[0].attributes or []
+    switch attr?.name
       when "Version"
         throw new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
       when "Destination"
@@ -313,8 +313,8 @@ get_session_index = (dom) ->
   authn_statement = assertion[0].getElementsByTagNameNS(XMLNS.SAML, 'AuthnStatement')
   throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length is 1
 
-  for attr in authn_statement[0].attributes
-    if attr.name is 'SessionIndex'
+  for attr in authn_statement[0].attributes or []
+    if attr?.name is 'SessionIndex'
       return attr.value
 
   throw new Error("SessionIndex not an attribute of AuthnStatement.")
@@ -331,9 +331,9 @@ parse_assertion_attributes = (dom) ->
 
   assertion_attributes = {}
   for attribute in attribute_statement[0].getElementsByTagNameNS(XMLNS.SAML, 'Attribute')
-    for attr in attribute.attributes
-      if attr.name is 'Name'
-        attribute_name = attr.value
+    for attr in attribute?.attributes or []
+      if attr?.name is 'Name'
+        attribute_name = attr?.value
     throw new Error("Invalid attribute without name") unless attribute_name?
     attribute_values = attribute.getElementsByTagNameNS(XMLNS.SAML, 'AttributeValue')
     assertion_attributes[attribute_name] = _(attribute_values).map (attribute_value) ->
@@ -392,7 +392,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       if ignore_signature
         return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
 
-      for cert in idp_certificates
+      for cert in idp_certificates or []
         signed_data = check_saml_signature result, cert
         unless signed_data
           continue # Cert was not valid, try the next one
