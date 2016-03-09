@@ -465,6 +465,7 @@ module.exports.ServiceProvider =
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_login_url
+        delete uri.search
         if options.sign_get_request
           uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         else

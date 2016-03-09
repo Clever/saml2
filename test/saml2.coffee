@@ -503,6 +503,29 @@ describe 'saml2', ->
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
+    it 'can create login request url with query paramters', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login?partnerid=abcdef1234'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      async.waterfall [
+        (cb_wf) -> sp.create_login_request_url idp, {assert_endpoint:'https://sp.example.com/assert'}, cb_wf
+      ], (err, login_url, id) ->
+        assert not err?, "Error creating login URL: #{err}"
+        parsed_url = url.parse login_url, true
+        saml_request = parsed_url.query?.SAMLRequest?
+        assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        done()
+
     it 'passes through RelayState in create login request url', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
