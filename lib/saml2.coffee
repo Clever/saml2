@@ -392,8 +392,9 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       if ignore_signature
         return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
 
+      saml_response_str = saml_response.toString()
       for cert in idp_certificates or []
-        signed_data = check_saml_signature result, cert
+        signed_data = check_saml_signature(saml_response_str, cert) or check_saml_signature result, cert
         unless signed_data
           continue # Cert was not valid, try the next one
 
