@@ -569,12 +569,16 @@ module.exports.ServiceProvider =
       xml = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_logout_url
+        uri = url.parse identity_provider.sso_logout_url, true
+        query = null
         if options.sign_get_request
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
+          query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         else
-          uri.query = SAMLRequest: deflated.toString 'base64'
-          uri.query.RelayState = options.relay_state if options.relay_state?
+          query = SAMLRequest: deflated.toString 'base64'
+          query.RelayState = options.relay_state if options.relay_state?
+        uri.query = _.extend(query, uri.query)
+        uri.search = null
+        uri.query = query
         cb null, url.format(uri)
 
     # Returns:

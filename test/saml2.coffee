@@ -660,6 +660,35 @@ describe 'saml2', ->
         assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
         done()
 
+  it 'can create logout request url using an idp with query string parameter', (done) ->
+    sp_options =
+      entity_id: 'https://sp.example.com/metadata.xml'
+      private_key: get_test_file('test.pem')
+      certificate: get_test_file('test.crt')
+      assert_endpoint: 'https://sp.example.com/assert'
+    idp_options =
+      sso_login_url: 'https://idp.example.com/login'
+      sso_logout_url:  'https://idp.example.com?action=logout'
+      certificates: get_test_file('test.crt')
+    request_options =
+      name_id: 'name_id'
+      session_index: 'session_index'
+      sign_get_request: true
+
+    sp = new saml2.ServiceProvider sp_options
+    idp = new saml2.IdentityProvider idp_options
+
+    async.waterfall [
+      (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
+    ], (err, logout_url) ->
+      assert not err?, "Error creating logout URL: #{err}"
+      parsed_url = url.parse logout_url, true
+      console.log parsed_url
+      assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
+      assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+      assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
+      done()
+
     it 'can create logout request url using an string sso_logout_url', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
