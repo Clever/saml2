@@ -653,11 +653,12 @@ describe 'saml2', ->
 
       async.waterfall [
         (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
-      ], (err, logout_url) ->
+      ], (err, logout_url, request_id) ->
         assert not err?, "Error creating logout URL: #{err}"
         parsed_url = url.parse logout_url, true
         assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
         assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+        assert request_id, 'Could not find Request ID'
         done()
 
   it 'can create logout request url using an idp with query string parameter', (done) ->
@@ -680,13 +681,14 @@ describe 'saml2', ->
 
     async.waterfall [
       (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
-    ], (err, logout_url) ->
+    ], (err, logout_url, request_id) ->
       assert not err?, "Error creating logout URL: #{err}"
       parsed_url = url.parse logout_url, true
       console.log parsed_url
       assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
       assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
       assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
+      assert request_id, 'Could not find Request ID'
       done()
 
     it 'can create logout request url using an string sso_logout_url', (done) ->
@@ -707,11 +709,12 @@ describe 'saml2', ->
 
       async.waterfall [
         (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
-      ], (err, logout_url) ->
+      ], (err, logout_url, request_id) ->
         assert not err?, "Error creating logout URL: #{err}"
         parsed_url = url.parse logout_url, true
         assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
         assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+        assert request_id, 'Could not find Request ID'
         done()
 
     it 'can create logout response url using an idp', (done) ->

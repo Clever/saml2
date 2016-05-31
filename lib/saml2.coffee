@@ -80,11 +80,12 @@ create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_
 
 # Creates a LogoutRequest and returns it as a string of xml.
 create_logout_request = (issuer, name_id, session_index, destination) ->
-  xmlbuilder.create
+  id = '_' + crypto.randomBytes( 21 ).toString( 'hex' )
+  xml = xmlbuilder.create
     'samlp:LogoutRequest':
       '@xmlns:samlp': XMLNS.SAMLP
       '@xmlns:saml': XMLNS.SAML
-      '@ID': '_' + crypto.randomBytes(21).toString('hex')
+      '@ID': id
       '@Version': '2.0'
       '@IssueInstant': (new Date()).toISOString()
       '@Destination': destination
@@ -92,6 +93,8 @@ create_logout_request = (issuer, name_id, session_index, destination) ->
       'saml:NameID': name_id
       'samlp:SessionIndex': session_index
   .end()
+
+  {id, xml}
 
 # Creates a LogoutResponse and returns it as a string of xml.
 create_logout_response = (issuer, in_response_to, destination, status='urn:oasis:names:tc:SAML:2.0:status:Success') ->
@@ -566,7 +569,7 @@ module.exports.ServiceProvider =
     create_logout_request_url: (identity_provider, options, cb) =>
       identity_provider = { sso_logout_url: identity_provider, options: {} } if _.isString(identity_provider)
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
-      xml = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
+      {id, xml} = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         uri = url.parse identity_provider.sso_logout_url, true
@@ -579,7 +582,7 @@ module.exports.ServiceProvider =
         uri.query = _.extend(query, uri.query)
         uri.search = null
         uri.query = query
-        cb null, url.format(uri)
+        cb null, url.format(uri), id
 
     # Returns:
     #   Redirect URL to confirm a successful logout.
