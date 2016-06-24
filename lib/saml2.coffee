@@ -17,6 +17,7 @@ XMLNS =
   MD: 'urn:oasis:names:tc:SAML:2.0:metadata'
   DS: 'http://www.w3.org/2000/09/xmldsig#'
   XENC: 'http://www.w3.org/2001/04/xmlenc#'
+  EXC_C14N: 'http://www.w3.org/2001/10/xml-exc-c14n#'
 
 class SAMLError extends Error
   constructor: (@message, @extra) ->
@@ -375,6 +376,35 @@ pretty_assertion_attributes = (assertion_attributes) ->
     .object()
     .value()
 
+# takes in an XML string, returns an XML string
+# applies all inclusive namespaces for signature assertions onto assertion tag
+# used as recommended workaround for xml-crypto library limitation with inclusive namespaces
+# see https://github.com/yaronn/xml-crypto/issues/48#issuecomment-129705816
+add_namespaces_to_child_assertions = (xml_string) ->
+    doc = new xmldom.DOMParser().parseFromString xml_string
+
+    response_elements = doc.getElementsByTagNameNS XMLNS.SAMLP, 'Response'
+    return xml_string if response_elements.length isnt 1
+    response_element = response_elements[0]
+
+    assertion_elements = response_element.getElementsByTagNameNS XMLNS.SAML, 'Assertion'
+    return xml_string if assertion_elements.length isnt 1
+    assertion_element = assertion_elements[0]
+    return xml_string if assertion_element.getElementsByTagNameNS(XMLNS.DS, 'Signature').length is 0
+
+    inclusive_namespaces = assertion_element.getElementsByTagNameNS(XMLNS.EXC_C14N, 'InclusiveNamespaces')[0]
+    return xml_string if not inclusive_namespaces
+    prefix_list = inclusive_namespaces.getAttribute('PrefixList')
+
+    # add the namespaces that are present in response and missing in assertion.
+    for ns in prefix_list.split ' '
+      if response_element.getAttribute('xmlns:' + ns) and !assertion_element.getAttribute('xmlns:' + ns)
+        new_attribute = doc.createAttribute 'xmlns:' + ns
+        new_attribute.value = response_element.getAttribute 'xmlns:' + ns
+        assertion_element.setAttributeNode new_attribute
+
+    return new xmldom.XMLSerializer().serializeToString response_element
+
 # Takes a DOM of a saml_response, private keys with which to attempt decryption and the
 # certificate(s) of the identity provider that issued it and will return a user object containing
 # the attributes or an error if keys are incorrect or the response is invalid.
@@ -522,7 +552,8 @@ module.exports.ServiceProvider =
 
         (response_buffer, cb_wf) =>
           debug saml_response
-          saml_response = (new xmldom.DOMParser()).parseFromString(response_buffer.toString())
+          saml_response_abnormalized = add_namespaces_to_child_assertions(response_buffer.toString())
+          saml_response = (new xmldom.DOMParser()).parseFromString(saml_response_abnormalized)
 
           try
             response = { response_header: parse_response_header(saml_response) }
