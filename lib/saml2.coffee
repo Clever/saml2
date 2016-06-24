@@ -17,6 +17,7 @@ XMLNS =
   MD: 'urn:oasis:names:tc:SAML:2.0:metadata'
   DS: 'http://www.w3.org/2000/09/xmldsig#'
   XENC: 'http://www.w3.org/2001/04/xmlenc#'
+  EXC_C14N: 'http://www.w3.org/2001/10/xml-exc-c14n#'
 
 class SAMLError extends Error
   constructor: (@message, @extra) ->
@@ -382,24 +383,24 @@ pretty_assertion_attributes = (assertion_attributes) ->
 add_namespaces_to_child_assertions = (xml_string) ->
     doc = new xmldom.DOMParser().parseFromString xml_string
 
-    response_elements = doc.getElementsByTagNameNS "urn:oasis:names:tc:SAML:2.0:protocol", "Response"
+    response_elements = doc.getElementsByTagNameNS XMLNS.SAMLP, 'Response'
     return xml_string if response_elements.length isnt 1
     response_element = response_elements[0]
 
-    assertion_elements = response_element.getElementsByTagNameNS "urn:oasis:names:tc:SAML:2.0:assertion", "Assertion"
+    assertion_elements = response_element.getElementsByTagNameNS XMLNS.SAML, 'Assertion'
     return xml_string if assertion_elements.length isnt 1
     assertion_element = assertion_elements[0]
+    return xml_string if assertion_element.getElementsByTagNameNS(XMLNS.DS, 'Signature').length is 0
 
-    inclusive_namespaces = assertion_element.getElementsByTagNameNS("http://www.w3.org/2001/10/xml-exc-c14n#", "InclusiveNamespaces")[0]
+    inclusive_namespaces = assertion_element.getElementsByTagNameNS(XMLNS.EXC_C14N, 'InclusiveNamespaces')[0]
     return xml_string if not inclusive_namespaces
-    return xml_string if assertion_element.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "Signature").length is 0
-    prefix_list = inclusive_namespaces.getAttribute("PrefixList")
+    prefix_list = inclusive_namespaces.getAttribute('PrefixList')
 
     # add the namespaces that are present in response and missing in assertion.
-    for ns in prefix_list.split " "
-      if response_element.getAttribute("xmlns:" + ns) and !assertion_element.getAttribute("xmlns:" + ns)
-        new_attribute = doc.createAttribute "xmlns:" + ns
-        new_attribute.value = response_element.getAttribute "xmlns:" + ns
+    for ns in prefix_list.split ' '
+      if response_element.getAttribute('xmlns:' + ns) and !assertion_element.getAttribute('xmlns:' + ns)
+        new_attribute = doc.createAttribute 'xmlns:' + ns
+        new_attribute.value = response_element.getAttribute 'xmlns:' + ns
         assertion_element.setAttributeNode new_attribute
 
     return new xmldom.XMLSerializer().serializeToString response_element
