@@ -413,36 +413,54 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
 
   async.waterfall [
     (cb_wf) ->
-      decrypt_assertion saml_response, sp_private_keys, (err, result) ->
-        return cb_wf null, result unless err?
-        return cb_wf err, result unless allow_unencrypted
-        assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
-        unless assertion.length is 1
-          return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
-        cb_wf null, assertion[0].toString()
-    (result, cb_wf) ->
-      debug result
-      if ignore_signature
-        return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
+      unencrypted_assertions = saml_response.getElementsByTagNameNS( XMLNS.SAML, 'Assertion' )
+      encrypted_assertions = saml_response.getElementsByTagNameNS( XMLNS.SAML, 'EncryptedAssertion' )
 
-      saml_response_str = saml_response.toString()
+      nb_assertions = unencrypted_assertions.length + encrypted_assertions.length
+      unless nb_assertions is 1
+       return cb_wf new Error("Expected one Assertion or EncryptedAssertion. Found #{unencrypted_assertions.length} Assertions and #{encrypted_assertions.length} EncryptedAssertions")
+
+      if encrypted_assertions.length == 1
+        decrypt_assertion saml_response, sp_private_keys, (err, result) ->
+          return cb_wf err, result
+      else if unencrypted_assertions.length == 1 and allow_unencrypted
+        return cb_wf null, unencrypted_assertions[0].toString()
+      else
+        return cb_wf new Error("Found one unencrypted Assertion but flag 'allow_unencrypted' is set to false!")
+    (decrypted_assertion, cb_wf) ->
+      debug decrypted_assertion
+      if ignore_signature
+        return cb_wf null, (new xmldom.DOMParser()).parseFromString(decrypted_assertion)
+
       for cert in idp_certificates or []
-        signed_data = check_saml_signature(result, cert) or check_saml_signature saml_response_str, cert
+        # Signature is either part of the assertion node or the root node.
+        signatures_from_assertion = check_saml_signature decrypted_assertion, cert
+        signatures_from_response = check_saml_signature saml_response.toString(), cert
+
+        signed_data = signatures_from_assertion or signatures_from_response
         unless signed_data
           continue # Cert was not valid, try the next one
 
         for sd in signed_data
           signed_dom = (new xmldom.DOMParser()).parseFromString(sd)
-          assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
-          if assertion.length is 1
-            return cb_wf null, signed_dom
+
+          if signatures_from_assertion
+            assertion = signed_dom.getElementsByTagNameNS( XMLNS.SAML, 'Assertion' )
+            if assertion.length is 1
+              return cb_wf null, signed_dom
+            else
+              return cb_wf new Error( "Signed data does not contain a SAML Assertion!" )
+          else if signatures_from_response
+            decrypted_assertion_dom = (new xmldom.DOMParser()).parseFromString(decrypted_assertion)
+            return cb_wf null, decrypted_assertion_dom
+              
         return cb_wf new Error("Signed data did not contain a SAML Assertion!")
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
-    (decrypted_assertion, cb_wf) ->
+    (decrypted_assertion_dom, cb_wf) ->
       try
-        user.name_id = get_name_id decrypted_assertion
-        user.session_index = get_session_index decrypted_assertion
-        assertion_attributes = parse_assertion_attributes decrypted_assertion
+        user.name_id = get_name_id decrypted_assertion_dom
+        user.session_index = get_session_index decrypted_assertion_dom
+        assertion_attributes = parse_assertion_attributes decrypted_assertion_dom
         user = _.extend user, pretty_assertion_attributes(assertion_attributes)
         user = _.extend user, attributes: assertion_attributes
         cb_wf null, { user }
