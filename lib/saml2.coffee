@@ -556,7 +556,6 @@ module.exports.ServiceProvider =
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
 
       saml_response = null
-      decrypted_assertion = null
       response = {}
 
       async.waterfall [
