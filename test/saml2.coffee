@@ -560,6 +560,7 @@ describe 'saml2', ->
         parsed_url = url.parse login_url, true
         saml_request = parsed_url.query?.SAMLRequest?
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.partnerid, 'Could not find partnerid in url query parameters'
         done()
 
     it 'passes through RelayState in create login request url', (done) ->
@@ -684,7 +685,6 @@ describe 'saml2', ->
     ], (err, logout_url, request_id) ->
       assert not err?, "Error creating logout URL: #{err}"
       parsed_url = url.parse logout_url, true
-      console.log parsed_url
       assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
       assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
       assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
