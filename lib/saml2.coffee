@@ -310,7 +310,7 @@ get_name_id = (dom) ->
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the SessionIndex. It will throw an error
 # if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid.
-get_session_index = (dom) ->
+get_session_index = (dom, index_required=true) ->
   assertion = dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
@@ -321,7 +321,9 @@ get_session_index = (dom) ->
     if attr?.name is 'SessionIndex'
       return attr.value
 
-  throw new Error("SessionIndex not an attribute of AuthnStatement.")
+  if index_required
+    throw new Error("SessionIndex not an attribute of AuthnStatement.")
+  else return null
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
@@ -408,7 +410,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # Takes a DOM of a saml_response, private keys with which to attempt decryption and the
 # certificate(s) of the identity provider that issued it and will return a user object containing
 # the attributes or an error if keys are incorrect or the response is invalid.
-parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, cb) ->
+parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, cb) ->
   user = {}
 
   async.waterfall [
@@ -441,7 +443,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
     (decrypted_assertion, cb_wf) ->
       try
         user.name_id = get_name_id decrypted_assertion
-        user.session_index = get_session_index decrypted_assertion
+        user.session_index = get_session_index decrypted_assertion, require_session_index
         assertion_attributes = parse_assertion_attributes decrypted_assertion
         user = _.extend user, pretty_assertion_attributes(assertion_attributes)
         user = _.extend user, attributes: assertion_attributes
@@ -477,13 +479,13 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
+      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs, @require_session_index} = options
 
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "require_session_index")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -571,6 +573,7 @@ module.exports.ServiceProvider =
                 identity_provider.certificates,
                 options.allow_unencrypted_assertion,
                 options.ignore_signature,
+                options.require_session_index,
                 cb_wf)
 
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
