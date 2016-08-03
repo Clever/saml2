@@ -46,6 +46,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
 
 #### Returns the following functions
 - [`create_login_request_url(IdP, options, cb)`](#create_login_request_url) - Get a URL to initiate a login.
