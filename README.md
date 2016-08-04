@@ -46,7 +46,6 @@ An object that can contain the below options.  All options are strings, unless s
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
-- `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
 
 #### Returns the following functions
 - [`create_login_request_url(IdP, options, cb)`](#create_login_request_url) - Get a URL to initiate a login.
@@ -106,6 +105,7 @@ Takes the following arguments:
 - `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
   - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
   - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  - `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
 - `cb(error, response)` - Callback called with the [request response](#assert_response).
 
 <a name="assert_response" />
@@ -133,6 +133,7 @@ Takes the following arguments:
 - `options` - An object that can contain the below options.  All options are strings, unless specified otherwise.  See [note](#note_options) for more information on options.
   - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
   - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  - `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
 - `cb(error, response)` - Callback called with the [request response](#assert_response).
 
 

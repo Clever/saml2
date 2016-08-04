@@ -481,15 +481,13 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs, @require_session_index} = options
-
-      if @require_session_index is undefined then @require_session_index = true
+      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "require_session_index")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -521,10 +519,9 @@ module.exports.ServiceProvider =
     #   options
     #   cb
     redirect_assert: (identity_provider, options, cb) ->
-      options = _.extend(options, {get_request: true})
+      options = _.defaults(_.extend(options, {get_request: true}), {require_session_index: true})
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
       @_assert identity_provider, options, cb
-
 
     # Returns:
     #   An object containing the parsed response for a post assert.
@@ -533,7 +530,7 @@ module.exports.ServiceProvider =
     #   options
     #   cb
     post_assert: (identity_provider, options, cb) ->
-      options = _.extend(options, {get_request: false})
+      options = _.defaults(_.extend(options, {get_request: false}), {require_session_index: true})
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
       @_assert identity_provider, options, cb
 
