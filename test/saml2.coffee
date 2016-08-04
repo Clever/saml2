@@ -247,6 +247,10 @@ describe 'saml2', ->
         session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')
         assert.equal session_index, '_3'
 
+      it 'returns null for no session_index', ->
+        session_index = saml2.get_session_index dom_from_test_file('good_assertion_no_session_index.xml'), false
+        assert.equal session_index, null
+
     describe 'parse_assertion_attributes', ->
       it 'correctly parses assertion attributes', ->
         expected_attributes =
@@ -459,6 +463,44 @@ describe 'saml2', ->
         assert.deepEqual response, expected_response
         done()
 
+    it 'correctly parses an AuthnStatement with no session_index', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("empty_session_index.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert not err?, "Got error: #{err}"
+        expected_response =
+          response_header:
+            id: '_2'
+            in_response_to: '_1'
+            destination: 'https://sp.example.com/assert'
+          type: 'authn_response'
+          user:
+            name_id: undefined
+            session_index: null
+            attributes: {}
+
+        assert.deepEqual response, expected_response
+        done()
+
   describe 'redirect assert', ->
 
     it 'returns a user object with passed a valid AuthnResponse', (done) ->
@@ -592,7 +634,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
         nameid_format: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
@@ -618,7 +660,7 @@ describe 'saml2', ->
         sso_login_url: 'https://idp.example.com/login'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
-      request_options = 
+      request_options =
         assert_endpoint: 'https://sp.example.com/assert'
         relay_state: 'Some Relay State!'
 
@@ -684,7 +726,6 @@ describe 'saml2', ->
     ], (err, logout_url, request_id) ->
       assert not err?, "Error creating logout URL: #{err}"
       parsed_url = url.parse logout_url, true
-      console.log parsed_url
       assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
       assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
       assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
@@ -703,7 +744,7 @@ describe 'saml2', ->
         name_id: 'name_id'
         session_index: 'session_index'
         sign_get_request: true
-      
+
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
 
