@@ -309,7 +309,9 @@ get_name_id = (dom) ->
   nameid[0].firstChild?.data
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the SessionIndex. It will throw an error
-# if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid.
+# if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid. Optionally you can pass a
+# second argument `false` making SessionIndex optional. Doing so returns `null` instead of throwing an Error if the
+# SessionIndex attribute does not exist.
 get_session_index = (dom, index_required=true) ->
   assertion = dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
