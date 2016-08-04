@@ -483,6 +483,8 @@ module.exports.ServiceProvider =
     constructor: (options) ->
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs, @require_session_index} = options
 
+      if @require_session_index is undefined then @require_session_index = true
+
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
