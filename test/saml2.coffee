@@ -495,13 +495,11 @@ describe 'saml2', ->
           type: 'authn_response'
           user:
             name_id: undefined
-            session_index: null,
+            session_index: null
             attributes: {}
 
         assert.deepEqual response, expected_response
         done()
-
-
 
   describe 'redirect assert', ->
 
