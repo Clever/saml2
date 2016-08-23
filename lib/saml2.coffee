@@ -502,13 +502,18 @@ module.exports.ServiceProvider =
       { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_login_url
+        uri = url.parse identity_provider.sso_login_url, true
+        query = null
         delete uri.search
         if options.sign_get_request
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
+          query = sign_request deflated.toString('base64'), @private_key, options.relay_state
         else
-          uri.query = SAMLRequest: deflated.toString 'base64'
-          uri.query.RelayState = options.relay_state if options.relay_state?
+          query = SAMLRequest: deflated.toString 'base64'
+          query.RelayState = options.relay_state if options.relay_state?
+
+        uri.query = _.extend(query, uri.query)
+        uri.search = null
+        uri.query = query
         cb null, url.format(uri), id
 
     # Returns:

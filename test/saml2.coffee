@@ -602,6 +602,7 @@ describe 'saml2', ->
         parsed_url = url.parse login_url, true
         saml_request = parsed_url.query?.SAMLRequest?
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.partnerid, 'Could not find partnerid in url query parameters'
         done()
 
     it 'passes through RelayState in create login request url', (done) ->
