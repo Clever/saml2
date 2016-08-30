@@ -522,11 +522,9 @@ module.exports.ServiceProvider =
 
     # Returns:
     #   An xml string with an AuthnRequest with an embedded xml signature
-    #   This type of assert inflates the response before parsing it.
     # Params:
     #   identity_provider
     #   options
-    #   cb
     create_authn_request_xml: (identity_provider, options) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
