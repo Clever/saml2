@@ -8,6 +8,7 @@ saml2         = require "#{__dirname}/../index"
 url           = require 'url'
 util          = require 'util'
 xmldom        = require 'xmldom'
+xmlcrypto     = require 'xml-crypto'
 
 describe 'saml2', ->
   get_test_file = (filename) ->
@@ -143,7 +144,7 @@ describe 'saml2', ->
         formatted_key = saml2.format_pem get_test_file("test.pem"), 'PRIVATE KEY'
         assert.equal formatted_key, get_test_file("test.pem")
 
-    describe 'sign_request', ->
+    describe 'sign_get_request', ->
       it 'correctly signs a get request', ->
         signed = saml2.sign_request 'TESTMESSAGE', get_test_file("test.pem")
 
@@ -162,6 +163,14 @@ describe 'saml2', ->
         assert signed.SigAlg, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
         assert.equal signed.RelayState, 'TESTSTATE'
         assert.equal signed.SAMLResponse, 'TESTMESSAGE'
+
+    describe 'sign_authn_request_with_embedded_signature', ->
+      it 'correctly embeds the signature', ->
+        { id, xml } = saml2.create_authn_request 'https://sp.example.com/metadata.xml', 'https://sp.example.com/assert', 'https://idp.example.com/login'
+        signed = saml2.sign_authn_request xml, get_test_file("test.pem")
+        result = saml2.check_saml_signature signed, get_test_file("test.crt")
+        assert result, 'validation result should not be null'
+        assert.equal result.length, 1, 'validation result should only have 1 item'
 
     describe 'check_saml_signature', ->
       it 'accepts signed xml', ->

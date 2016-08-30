@@ -10,6 +10,7 @@ xmlcrypto     = require 'xml-crypto'
 xmldom        = require 'xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
+SignedXml     = require('xml-crypto').SignedXml
 
 XMLNS =
   SAML: 'urn:oasis:names:tc:SAML:2.0:assertion'
@@ -49,6 +50,14 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
       RequestedAuthnContext: context_element
   .end()
   { id, xml }
+
+# Adds an embedded signature to a previously generated AuthnRequest
+sign_authn_request = (xml, private_key, options) ->
+  signer = new SignedXml null, options
+  signer.addReference "//*[local-name(.)='AuthnRequest']", ['http://www.w3.org/2000/09/xmldsig#enveloped-signature','http://www.w3.org/2001/10/xml-exc-c14n#']
+  signer.signingKey = private_key
+  signer.computeSignature xml
+  return signer.getSignedXml()
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
 create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
@@ -176,6 +185,7 @@ check_saml_signature = (xml, certificate) ->
 
   signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
+  console.log "validating signature"
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
@@ -512,6 +522,19 @@ module.exports.ServiceProvider =
         cb null, url.format(uri), id
 
     # Returns:
+    #   An xml string with an AuthnRequest with an embedded xml signature
+    #   This type of assert inflates the response before parsing it.
+    # Params:
+    #   identity_provider
+    #   options
+    #   cb
+    create_authn_request_xml: (identity_provider, options) ->
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      return add_embedded_signature(xml, options)
+
+    # Returns:
     #   An object containing the parsed response for a redirect assert.
     #   This type of assert inflates the response before parsing it.
     # Params:
@@ -654,6 +677,7 @@ module.exports.IdentityProvider =
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request = create_authn_request
+  module.exports.sign_authn_request = sign_authn_request
   module.exports.create_metadata = create_metadata
   module.exports.format_pem = format_pem
   module.exports.sign_request = sign_request
