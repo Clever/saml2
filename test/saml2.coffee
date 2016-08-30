@@ -54,6 +54,7 @@ describe 'saml2', ->
         assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
         assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
+
     describe 'create_metadata', ->
       CERT_1 = get_test_file 'test.crt'
       CERT_2 = get_test_file 'test2.crt'
@@ -716,34 +717,34 @@ describe 'saml2', ->
         assert request_id, 'Could not find Request ID'
         done()
 
-  it 'can create logout request url using an idp with query string parameter', (done) ->
-    sp_options =
-      entity_id: 'https://sp.example.com/metadata.xml'
-      private_key: get_test_file('test.pem')
-      certificate: get_test_file('test.crt')
-      assert_endpoint: 'https://sp.example.com/assert'
-    idp_options =
-      sso_login_url: 'https://idp.example.com/login'
-      sso_logout_url:  'https://idp.example.com?action=logout'
-      certificates: get_test_file('test.crt')
-    request_options =
-      name_id: 'name_id'
-      session_index: 'session_index'
-      sign_get_request: true
+    it 'can create logout request url using an idp with query string parameter', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com?action=logout'
+        certificates: get_test_file('test.crt')
+      request_options =
+        name_id: 'name_id'
+        session_index: 'session_index'
+        sign_get_request: true
 
-    sp = new saml2.ServiceProvider sp_options
-    idp = new saml2.IdentityProvider idp_options
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
 
-    async.waterfall [
-      (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
-    ], (err, logout_url, request_id) ->
-      assert not err?, "Error creating logout URL: #{err}"
-      parsed_url = url.parse logout_url, true
-      assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
-      assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
-      assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
-      assert request_id, 'Could not find Request ID'
-      done()
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_request_url idp, request_options, cb_wf
+      ], (err, logout_url, request_id) ->
+        assert not err?, "Error creating logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        assert parsed_url?.query?.SAMLRequest?, 'Could not find SAMLRequest in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutRequest is not signed'
+        assert parsed_url?.query?.action?, 'Could not find action in url query parameters'
+        assert request_id, 'Could not find Request ID'
+        done()
 
     it 'can create logout request url using an string sso_logout_url', (done) ->
       sp_options =
@@ -814,6 +815,49 @@ describe 'saml2', ->
         assert parsed_url?.query?.SAMLResponse?, 'Could not find SAMLResponse in url query parameters'
         assert parsed_url?.query?.Signature?, 'LogoutResponse is not signed'
         done()
+
+    it 'can create a signed AuthnRequest xml document', () ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      xml = sp.create_authn_request_xml(idp)
+      dom = (new xmldom.DOMParser()).parseFromString xml
+      method = dom.getElementsByTagName('SignatureMethod')[0]
+      assert.equal method.attributes[0].value, 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+    
+    it 'can create a signed AuthnRequest xml document with sha256 signature', () ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      options =
+        signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+
+      xml = sp.create_authn_request_xml(idp, options)
+      dom = (new xmldom.DOMParser()).parseFromString xml
+      method = dom.getElementsByTagName('SignatureMethod')[0]
+      assert.equal method.attributes[0].value, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
 
     it 'can create metadata', (done) ->
       done()

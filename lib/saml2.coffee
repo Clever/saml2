@@ -185,7 +185,6 @@ check_saml_signature = (xml, certificate) ->
 
   signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
-  console.log "validating signature"
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0].toString()
@@ -532,7 +531,7 @@ module.exports.ServiceProvider =
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
       { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
-      return add_embedded_signature(xml, options)
+      return sign_authn_request(xml, @private_key, options)
 
     # Returns:
     #   An object containing the parsed response for a redirect assert.
