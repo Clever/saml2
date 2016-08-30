@@ -502,12 +502,12 @@ module.exports.ServiceProvider =
       { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_login_url
-        delete uri.search
+        uri = url.parse identity_provider.sso_login_url, true
+        delete uri.search # If you provide search and query search overrides query :/
         if options.sign_get_request
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state
+          _(uri.query).extend sign_request(deflated.toString('base64'), @private_key, options.relay_state)
         else
-          uri.query = SAMLRequest: deflated.toString 'base64'
+          uri.query.SAMLRequest = deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
         cb null, url.format(uri), id
 
