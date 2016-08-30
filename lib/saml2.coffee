@@ -174,16 +174,17 @@ extract_certificate_data = (certificate) ->
 check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  signature = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return null unless signature.length is 1
-  sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
-  valid = sig.checkSignature xml
-  if valid
-    return get_signed_data(doc, sig.references)
-  else
-    return null
+  signatures = xmlcrypto.xpath(doc, ".//*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  return null unless signatures.length >= 1
+  # Accept the first valid signature. This is not true support for multiple signatures but allows some limited uses. 
+  for signature in signatures
+    sig = new xmlcrypto.SignedXml()
+    sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
+    sig.loadSignature signature.toString()
+    valid = sig.checkSignature xml
+    if valid
+      return get_signed_data(doc, sig.references)
+  return null
 
 # Gets the data that is actually signed according to xml-crypto. This function should mirror the way xml-crypto finds
 # elements for security reasons.
