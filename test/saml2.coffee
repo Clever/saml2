@@ -588,7 +588,7 @@ describe 'saml2', ->
         certificate: get_test_file('test.crt')
         assert_endpoint: 'https://sp.example.com/assert'
       idp_options =
-        sso_login_url: 'https://idp.example.com/login?partnerid=abcdef1234'
+        sso_login_url: 'https://idp.example.com/login?partnerid=abcdef1234&random_param=foo'
         sso_logout_url:  'https://idp.example.com/logout'
         certificates: 'other_service_cert'
 
@@ -601,6 +601,10 @@ describe 'saml2', ->
         assert not err?, "Error creating login URL: #{err}"
         parsed_url = url.parse login_url, true
         saml_request = parsed_url.query?.SAMLRequest?
+        assert.deepEqual _(parsed_url.query).omit("SAMLRequest"), {
+          partnerid: "abcdef1234"
+          random_param: "foo"
+        }
         assert saml_request, 'Could not find SAMLRequest in url query parameters'
         done()
 
