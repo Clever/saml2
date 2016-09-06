@@ -275,6 +275,19 @@ describe 'saml2', ->
         attributes = saml2.parse_assertion_attributes dom_from_test_file('blank_assertion.xml')
         assert.deepEqual attributes, {}
 
+    describe 'add_namespaces_to_child_assertions', ->
+      it 'copies namespaces from Response to Assertion if there is no InclusiveNamespaces', ->
+        response = saml2.add_namespaces_to_child_assertions get_test_file('namespaced_assertion.xml')
+        dom = (new xmldom.DOMParser()).parseFromString response
+        assertion = dom.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'Assertion')
+        attributes = (attr.name for attr in assertion[0].attributes)
+        assert.deepEqual attributes, [
+          'xmlns:xsi'
+          'xmlns:xs'
+          'xmlns:samlp'
+          'xmlns:saml'
+        ]
+
     describe 'set option defaults', ->
       it 'sets defaults in the correct order', ->
         options_top =
