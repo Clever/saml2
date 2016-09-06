@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:foo="bar">
+    <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+        <ds:Signature Id="uuid7ffae679-0152-14e0-bd4f-dff79ed21b90">
+            <ds:SignedInfo>
+                <ds:Reference URI="#Assertion-uuid7ffae65d-0152-16c9-80a3-dff79ed21b90">
+                    <ds:Transforms>
+                        <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+                            <xc14n:InclusiveNamespaces xmlns:xc14n="http://www.w3.org/2001/10/xml-exc-c14n#" PrefixList=""></xc14n:InclusiveNamespaces>
+                        </ds:Transform>
+                    </ds:Transforms>
+                </ds:Reference>
+            </ds:SignedInfo>
+        </ds:Signature>
+    </saml:Assertion>
+</samlp:Response>
