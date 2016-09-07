@@ -396,10 +396,10 @@ add_namespaces_to_child_assertions = (xml_string) ->
     assertion_element = assertion_elements[0]
 
     inclusive_namespaces = assertion_element.getElementsByTagNameNS(XMLNS.EXC_C14N, 'InclusiveNamespaces')[0]
-    if inclusive_namespaces and prefixList = inclusive_namespaces.getAttribute('PrefixList')?.trim()
-      namespaces = prefixList.split(' ').map (ns) -> "xmlns:#{ns}"
+    namespaces = if inclusive_namespaces and prefixList = inclusive_namespaces.getAttribute('PrefixList')?.trim()
+      ("xmlns:#{ns}" for ns in prefixList.split(' '))
     else
-      namespaces = (attr.name for attr in response_element.attributes when attr.name.startsWith 'xmlns:')
+      (attr.name for attr in response_element.attributes when attr.name.startsWith 'xmlns:')
 
     # add the namespaces that are present in response and missing in assertion.
     for ns in namespaces
