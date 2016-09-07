@@ -174,6 +174,9 @@ describe 'saml2', ->
       it 'rejects xml with an invalid signature', ->
         assert.equal null, saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test2.crt"))
 
+      it 'validates a Response signature when a signature also exists within the Assertion', ->
+        assert.notEqual null, saml2.check_saml_signature(get_test_file("good_response_twice_signed.xml"), get_test_file("test.crt"))
+
     describe 'check_status_success', =>
       it 'accepts a valid success status', =>
         assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."
