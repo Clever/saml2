@@ -258,10 +258,10 @@ decrypt_assertion = (dom, private_keys, cb) ->
     unless encrypted_data.length is 1
       return cb new Error("Expected 1 EncryptedData inside EncryptedAssertion; found #{encrypted_data.length}.")
 
-    encrypted_data = encrypted_data[0].toString()
+    encrypted_assertion = encrypted_assertion[0].toString()
     errors = []
     async.eachOfSeries private_keys, (private_key, index, cb_e) ->
-      xmlenc.decrypt encrypted_data, {key: format_pem(private_key, 'PRIVATE KEY')}, (err, result) ->
+      xmlenc.decrypt encrypted_assertion, {key: format_pem(private_key, 'PRIVATE KEY')}, (err, result) ->
         if err?
           errors.push new Error("Decrypt failed: #{util.inspect err}") if err?
           return cb_e()
