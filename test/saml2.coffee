@@ -291,7 +291,7 @@ describe 'saml2', ->
           'xmlns:saml'
         ]
         # shouldn't have copied the namespace from the Response element
-        assert.equal attributes.includes('xmlns:foo'), false
+        assert.equal attributes.indexOf('xmlns:foo'), -1
 
       it 'copies namespaces from Response to Assertion if there is no InclusiveNamespaces', ->
         response = saml2.add_namespaces_to_child_assertions get_test_file('namespaced_assertion.xml')

@@ -399,7 +399,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
     namespaces = if inclusive_namespaces and prefixList = inclusive_namespaces.getAttribute('PrefixList')?.trim()
       ("xmlns:#{ns}" for ns in prefixList.split(' '))
     else
-      (attr.name for attr in response_element.attributes when attr.name.startsWith 'xmlns:')
+      (attr.name for attr in response_element.attributes when attr.name.match /^xmlns:/)
 
     # add the namespaces that are present in response and missing in assertion.
     for ns in namespaces
