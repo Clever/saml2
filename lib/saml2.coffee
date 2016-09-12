@@ -394,17 +394,18 @@ add_namespaces_to_child_assertions = (xml_string) ->
     assertion_elements = response_element.getElementsByTagNameNS XMLNS.SAML, 'Assertion'
     return xml_string if assertion_elements.length isnt 1
     assertion_element = assertion_elements[0]
-    return xml_string if assertion_element.getElementsByTagNameNS(XMLNS.DS, 'Signature').length is 0
 
     inclusive_namespaces = assertion_element.getElementsByTagNameNS(XMLNS.EXC_C14N, 'InclusiveNamespaces')[0]
-    return xml_string if not inclusive_namespaces
-    prefix_list = inclusive_namespaces.getAttribute('PrefixList')
+    namespaces = if inclusive_namespaces and prefixList = inclusive_namespaces.getAttribute('PrefixList')?.trim()
+      ("xmlns:#{ns}" for ns in prefixList.split(' '))
+    else
+      (attr.name for attr in response_element.attributes when attr.name.startsWith 'xmlns:')
 
     # add the namespaces that are present in response and missing in assertion.
-    for ns in prefix_list.split ' '
-      if response_element.getAttribute('xmlns:' + ns) and !assertion_element.getAttribute('xmlns:' + ns)
-        new_attribute = doc.createAttribute 'xmlns:' + ns
-        new_attribute.value = response_element.getAttribute 'xmlns:' + ns
+    for ns in namespaces
+      if response_element.getAttribute(ns) and !assertion_element.getAttribute(ns)
+        new_attribute = doc.createAttribute ns
+        new_attribute.value = response_element.getAttribute ns
         assertion_element.setAttributeNode new_attribute
 
     return new xmldom.XMLSerializer().serializeToString response_element
@@ -666,5 +667,6 @@ if process.env.NODE_ENV is "test"
   module.exports.get_name_id = get_name_id
   module.exports.get_session_index = get_session_index
   module.exports.parse_assertion_attributes = parse_assertion_attributes
+  module.exports.add_namespaces_to_child_assertions = add_namespaces_to_child_assertions
   module.exports.set_option_defaults = set_option_defaults
   module.exports.extract_certificate_data = extract_certificate_data
