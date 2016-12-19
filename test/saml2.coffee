@@ -255,14 +255,19 @@ describe 'saml2', ->
         name_id = saml2.get_name_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
         assert.equal name_id, 'tstudent'
 
-    describe 'get_session_index', ->
+    describe 'get_session_info', ->
       it 'gets the correct session index', ->
-        session_index = saml2.get_session_index dom_from_test_file('good_assertion.xml')
-        assert.equal session_index, '_3'
+        info = saml2.get_session_info dom_from_test_file('good_assertion.xml')
+        assert.equal info.index, '_3'
 
       it 'returns null for no session_index', ->
-        session_index = saml2.get_session_index dom_from_test_file('good_assertion_no_session_index.xml'), false
-        assert.equal session_index, null
+        info = saml2.get_session_info dom_from_test_file('good_assertion_no_session_index.xml'), false
+        assert.equal info.index, null
+
+      it 'gets the correct session not on or after', ->
+        info = saml2.get_session_info dom_from_test_file('good_assertion.xml')
+        assert.equal info.not_on_or_after, '2014-03-13T22:35:05.387Z'
+
 
     describe 'parse_assertion_attributes', ->
       it 'correctly parses assertion attributes', ->
@@ -376,6 +381,7 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         expected_response =
           response_header:
+            version: '2.0'
             id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
@@ -422,6 +428,7 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         expected_response =
           response_header:
+            version: '2.0'
             id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
@@ -504,6 +511,7 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         expected_response =
           response_header:
+            version: '2.0'
             id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
@@ -511,6 +519,7 @@ describe 'saml2', ->
           user:
             name_id: undefined
             session_index: '_4'
+            session_not_on_or_after: '2016-02-11T21:12:09Z'
             attributes: {}
 
         assert.deepEqual response, expected_response
@@ -542,6 +551,7 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         expected_response =
           response_header:
+            version: '2.0'
             id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
@@ -549,6 +559,7 @@ describe 'saml2', ->
           user:
             name_id: undefined
             session_index: null
+            session_not_on_or_after: '2016-02-11T21:12:09Z'
             attributes: {}
 
         assert.deepEqual response, expected_response
@@ -577,6 +588,7 @@ describe 'saml2', ->
         assert not err?, "Got error: #{err}"
         expected_response =
           response_header:
+            version: '2.0'
             id: '_2'
             in_response_to: '_1'
             destination: 'https://sp.example.com/assert'
@@ -597,6 +609,7 @@ describe 'saml2', ->
               'http://schemas.xmlsoap.org/claims/Group': [ 'CN=Students,CN=Users,DC=idp,DC=example,DC=com' ]
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
               'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
+
         assert.deepEqual response, expected_response
         done()
 
@@ -878,7 +891,7 @@ describe 'saml2', ->
       dom = (new xmldom.DOMParser()).parseFromString xml
       method = dom.getElementsByTagName('SignatureMethod')[0]
       assert.equal method.attributes[0].value, 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
-    
+
     it 'can create a signed AuthnRequest xml document with sha256 signature', () ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'

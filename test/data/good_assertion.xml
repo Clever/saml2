@@ -48,7 +48,7 @@
       <AttributeValue>Test Student</AttributeValue>
     </Attribute>
   </AttributeStatement>
-  <AuthnStatement AuthnInstant="2014-03-12T21:35:05.354Z" SessionIndex="_3">
+  <AuthnStatement AuthnInstant="2014-03-12T21:35:05.354Z" SessionIndex="_3" SessionNotOnOrAfter="2014-03-13T22:35:05.387Z">
     <AuthnContext>
       <AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AuthnContextClassRef>
     </AuthnContext>

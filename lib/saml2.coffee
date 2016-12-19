@@ -221,8 +221,8 @@ check_status_success = (dom) ->
   return false unless status.length is 1
   for status_code in status[0].childNodes or []
     if status_code.attributes?
-      for attr in status_code.attributes or []
-        return true if attr?.name is 'Value' and attr?.value is 'urn:oasis:names:tc:SAML:2.0:status:Success'
+      status = get_attribute_value status_code, 'Value'
+      return status is 'urn:oasis:names:tc:SAML:2.0:status:Success'
   false
 
 get_status = (dom) ->
@@ -232,15 +232,12 @@ get_status = (dom) ->
 
   for status_code in status[0].childNodes or []
     if status_code.attributes?
-      for attr in status_code?.attributes or []
-        if attr?.name is 'Value'
-          top_status = attr.value
-          status_list[top_status] ?= []
+      top_status = get_attribute_value status_code, 'Value'
+      status_list[top_status] ?= []
     for sub_status_code in status_code.childNodes or []
       if sub_status_code?.attributes?
-        for attr in sub_status_code.attributes or []
-          if attr?.name is 'Value'
-            status_list[top_status].push attr?.value
+        status = get_attribute_value sub_status_code, 'Value'
+        status_list[top_status].push status
   status_list
 
 to_error = (err) ->
@@ -290,17 +287,16 @@ parse_response_header = (dom) ->
     break if response.length > 0
   throw new Error("Expected 1 Response; found #{response.length}") unless response.length is 1
 
-  response_header = {}
-  for attr in response[0].attributes or []
-    switch attr?.name
-      when "Version"
-        throw new Error "Invalid SAML Version #{attr.value}" unless attr.value is "2.0"
-      when "Destination"
-        response_header.destination = attr.value
-      when "InResponseTo"
-        response_header.in_response_to = attr.value
-      when "ID"
-        response_header.id = attr.value
+  response_header = {
+    version: get_attribute_value response[0], 'Version'
+    destination: get_attribute_value response[0], 'Destination'
+    in_response_to: get_attribute_value response[0], 'InResponseTo'
+    id: get_attribute_value response[0], 'ID'
+  }
+
+  # If no version attribute is supplied, assume v2
+  version = response_header.version or '2.0'
+  throw new Error "Invalid SAML Version #{version}" unless version is "2.0"
   response_header
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the NameID. If there is no NameID found,
@@ -317,24 +313,30 @@ get_name_id = (dom) ->
 
   nameid[0].firstChild?.data
 
+get_attribute_value = (node, attributeName) ->
+  attributes = node.attributes or []
+  attribute = _.filter attributes, (attr) -> attr.name is attributeName
+  attribute[0]?.value
+
 # Takes in an xml @dom of an object containing a SAML Assertion and returns the SessionIndex. It will throw an error
 # if there is no SessionIndex, no Assertion, or the Assertion does not appear to be valid. Optionally you can pass a
 # second argument `false` making SessionIndex optional. Doing so returns `null` instead of throwing an Error if the
 # SessionIndex attribute does not exist.
-get_session_index = (dom, index_required=true) ->
+get_session_info = (dom, index_required=true) ->
   assertion = dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
   authn_statement = assertion[0].getElementsByTagNameNS(XMLNS.SAML, 'AuthnStatement')
   throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length is 1
 
-  for attr in authn_statement[0].attributes or []
-    if attr?.name is 'SessionIndex'
-      return attr.value
+  info =
+    index: get_attribute_value authn_statement[0], 'SessionIndex'
+    not_on_or_after: get_attribute_value authn_statement[0], 'SessionNotOnOrAfter'
 
-  if index_required
+  if index_required and not info.index?
     throw new Error("SessionIndex not an attribute of AuthnStatement.")
-  else return null
+
+  info
 
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
@@ -348,9 +350,7 @@ parse_assertion_attributes = (dom) ->
 
   assertion_attributes = {}
   for attribute in attribute_statement[0].getElementsByTagNameNS(XMLNS.SAML, 'Attribute')
-    for attr in attribute?.attributes or []
-      if attr?.name is 'Name'
-        attribute_name = attr?.value
+    attribute_name = get_attribute_value attribute, 'Name'
     throw new Error("Invalid attribute without name") unless attribute_name?
     attribute_values = attribute.getElementsByTagNameNS(XMLNS.SAML, 'AttributeValue')
     assertion_attributes[attribute_name] = _(attribute_values).map (attribute_value) ->
@@ -454,8 +454,12 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
     (decrypted_assertion, cb_wf) ->
       try
+        session_info = get_session_info decrypted_assertion, require_session_index
         user.name_id = get_name_id decrypted_assertion
-        user.session_index = get_session_index decrypted_assertion, require_session_index
+        user.session_index = session_info.index
+        if session_info.not_on_or_after?
+          user.session_not_on_or_after = session_info.not_on_or_after
+
         assertion_attributes = parse_assertion_attributes decrypted_assertion
         user = _.extend user, pretty_assertion_attributes(assertion_attributes)
         user = _.extend user, attributes: assertion_attributes
@@ -686,7 +690,7 @@ if process.env.NODE_ENV is "test"
   module.exports.parse_response_header = parse_response_header
   module.exports.parse_logout_request = parse_logout_request
   module.exports.get_name_id = get_name_id
-  module.exports.get_session_index = get_session_index
+  module.exports.get_session_info = get_session_info
   module.exports.parse_assertion_attributes = parse_assertion_attributes
   module.exports.add_namespaces_to_child_assertions = add_namespaces_to_child_assertions
   module.exports.set_option_defaults = set_option_defaults
