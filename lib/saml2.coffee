@@ -444,7 +444,6 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
         try
           signed_data = check_saml_signature(result, cert) or check_saml_signature saml_response_str, cert
         catch err
-          return cb_wf new Error("SAML Assertion signature check failed! Signature could not be decrypted")
         unless signed_data
           continue # Cert was not valid, try the next one
 
