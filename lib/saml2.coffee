@@ -440,8 +440,11 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
         return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
 
       saml_response_str = saml_response.toString()
-      for cert in idp_certificates or []
-        signed_data = check_saml_signature(result, cert) or check_saml_signature saml_response_str, cert
+      for cert, i in idp_certificates or []
+        try
+          signed_data = check_saml_signature(result, cert) or check_saml_signature saml_response_str, cert
+        catch ex
+          return cb_wf new Error("SAML Assertion signature check failed! (Certificate \##{i+1} may be invalid. #{ex.message}")
         unless signed_data
           continue # Cert was not valid, try the next one
 
