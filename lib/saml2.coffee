@@ -126,6 +126,7 @@ create_logout_response = (issuer, in_response_to, destination, status='urn:oasis
 # Takes a base64 encoded @key and returns it formatted with newlines and a PEM header according to @type. If it already
 # has a PEM header, it will just return the original key.
 format_pem = (key, type) ->
+  key = new Buffer(key.data) if typeof key == 'object' && key.data?
   return key if (/-----BEGIN [0-9A-Z ]+-----[^-]*-----END [0-9A-Z ]+-----/g.exec(key))?
   return "-----BEGIN #{type.toUpperCase()}-----\n" + key.match(/.{1,64}/g).join("\n") + "\n-----END #{type.toUpperCase()}-----"
 
