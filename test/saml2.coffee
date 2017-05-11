@@ -486,6 +486,29 @@ describe 'saml2', ->
         assert (err instanceof Error), "Did not get expected error."
         done()
 
+    it "rejects a signed response if the idp certificate is invalid", (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url: 'https://idp.example.com/logout'
+        certificates: [ 'INVALIDCERTIFICATEDATA', get_test_file('test.crt') ]
+        allow_unencrypted_assertion: true
+      request_options =
+        request_body:
+          SAMLResponse: get_test_file("response_unsigned_assertion.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/may be invalid/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
     it 'correctly parses an empty NameID', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
