@@ -28,13 +28,13 @@
     "coffee-script": "~1.7.1"
   },
   "dependencies": {
-    "async": "~1.5.2",
-    "debug": "^2.6.x",
-    "underscore": "~1.6.0",
-    "xml-crypto": "^0.8.1",
-    "xml-encryption": "^0.9.0",
-    "xml2js": "~0.4.1",
-    "xmlbuilder": "~2.1.0",
-    "xmldom": "~0.1.19"
+    "async": "1.5.2",
+    "debug": "2.6.8",
+    "underscore": "1.6.0",
+    "xml-crypto": "0.8.1",
+    "xml-encryption": "0.9.0",
+    "xml2js": "0.4.1",
+    "xmlbuilder": "2.1.0",
+    "xmldom": "0.1.19"
   }
 }
