@@ -424,6 +424,17 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # the attributes or an error if keys are incorrect or the response is invalid.
 parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, cb) ->
   user = {}
+  
+  # strip of possible enveloping xml tags:
+  saml_response = saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response')[0] or saml_response
+
+  # check if we have a special case where the complete response is signed (an envelopped signature):
+  if !ignore_signature
+    for cert in idp_certificates or []
+      signed_data_from_complete_saml_response = check_saml_signature(saml_response.toString(), cert)
+      if signed_data_from_complete_saml_response?.length is 1 and signed_data_from_complete_saml_response[0] == saml_response.toString()
+        # parse reponse without checking for signatures anymore:
+        return parse_authn_response(saml_response, sp_private_keys, idp_certificates, allow_unencrypted, true, require_session_index, cb)
 
   async.waterfall [
     (cb_wf) ->
