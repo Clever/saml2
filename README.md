@@ -1,6 +1,6 @@
 # SAML2-js
 
-[![Build Status](https://ci.ops.clever.com/api/badge/github.com/Clever/saml2/status.svg?branch=master)](https://ci.ops.clever.com/github.com/Clever/saml2)
+[![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
 
 `saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
 
@@ -26,9 +26,11 @@ This library exports two constructors.
 - [`IdentityProvider`](#IdentityProvider) - Represents an online service that authenticates users in the SAML flow.
 
 <a name="note_options" />
+
 **Note:**  Some options can be set on the [SP](#ServiceProvider), [IdP](#IdentityProvider), and/or on a per-method basis. For the options that are set in multiple places, they are overridden in the following order: per-method basis *overrides* [IdP](#IdentityProvider) which *overrides* [SP](#ServiceProvider).
 
 <a name="ServiceProvider" />
+
 ### ServiceProvider(options)
 Represents a service provider that relies on a trusted [`IdentityProvider`](#IdentityProvider) for authentication and authorization in the SAML flow.
 
@@ -82,6 +84,7 @@ An object that can contain the below options.  All options are strings, unless s
 #### Service provider function definitions
 
 <a name="create_login_request_url" />
+
 ##### create_login_request_url(IdP, options, cb)
 Get a URL to initiate a login.
 
@@ -97,6 +100,7 @@ Takes the following arguments:
 
 
 <a name="redirect_assert" />
+
 ##### redirect_assert(IdP, options, cb)
 Gets a SAML response object if the login attempt is valid, used for redirect binding.
 
@@ -125,6 +129,7 @@ Example of the SAML assert response returned:
   ```
 
 <a name="post_assert" />
+
 ##### post_assert(IdP, options, cb)
 Gets a SAML response object if the login attempt is valid, used for post binding.
 
@@ -138,6 +143,7 @@ Takes the following arguments:
 
 
 <a name="create_logout_request_url" />
+
 ##### create_logout_request_url(IdP, options, cb)
 Creates a SAML Request URL to initiate a user logout.
 
@@ -153,6 +159,7 @@ Takes the following arguments:
 
 
 <a name="create_logout_response_url" />
+
 ##### create_logout_response_url(IdP, options, cb)
 Creates a SAML Response URL to confirm a successful [IdP](#IdentityProvider) initiated logout.
 
@@ -165,10 +172,12 @@ Takes the following arguments:
 - `cb(error, response_url)` - Callback called with the logout response url.
 
 <a name="create_metadata" />
+
 ##### create_metadata()
 Returns the XML metadata used during the initial SAML configuration.
 
 <a name="IdentityProvider" />
+
 ### IdentityProvider(options)
 Represents an online service that authenticates users in the SAML flow.
 
