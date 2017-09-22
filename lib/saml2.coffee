@@ -595,6 +595,17 @@ module.exports.ServiceProvider =
                 return cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
 
               response.type = 'authn_response'
+
+              conditions = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Conditions')[0]
+              if conditions?
+                if options.ignore_timing != true
+                  for attribute in conditions.attributes
+                    condition = attribute.name.toLowerCase()
+                    if condition == 'notbefore' and Date.parse(attribute.value) > Date.now()
+                      return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
+                    if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
+                      return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
+
               parse_authn_response(
                 saml_response,
                 [@private_key].concat(@alt_private_keys),
