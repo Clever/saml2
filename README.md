@@ -43,6 +43,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `assert_endpoint` - **Required** - URL of service provider assert endpoint.
 - `alt_private_keys` - (Array of PEM format strings) - Additional private keys to use when attempting to decrypt responses. Useful for adding backward-compatibility for old certificates after a rollover.
 - `alt_certs` - (Array of PEM format strings) - Additional certificates to expose in the SAML metadata. Useful for staging new certificates for rollovers.
+- `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
 - `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
@@ -139,6 +140,7 @@ Takes the following arguments:
   - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
   - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
   - `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
+  - `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
 - `cb(error, response)` - Callback called with the [request response](#assert_response).
 
 

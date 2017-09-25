@@ -500,11 +500,13 @@ module.exports.ServiceProvider =
     constructor: (options) ->
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
+      options.audience ?= @entity_id
+
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -605,6 +607,18 @@ module.exports.ServiceProvider =
                       return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
                     if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
                       return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
+
+                audience_restriction = conditions.getElementsByTagNameNS(XMLNS.SAML, 'AudienceRestriction')[0]
+                audiences = audience_restriction?.getElementsByTagNameNS(XMLNS.SAML, 'Audience')
+                if audiences?.length > 0
+                  validAudience = _.find audiences, (audience) ->
+                    audienceValue = audience.firstChild?.data?.trim()
+                    !_.isEmpty(audienceValue.trim()) and (
+                      (_.isRegExp(options.audience) and options.audience.test(audienceValue)) or
+                      (_.isString(options.audience) and options.audience.toLowerCase() == audienceValue.toLowerCase())
+                    )
+                  if !validAudience?
+                    return cb_wf new SAMLError('SAML Response is not valid for this audience')
 
               parse_authn_response(
                 saml_response,
