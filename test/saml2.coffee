@@ -619,6 +619,52 @@ describe 'saml2', ->
         assert (/SAML Response is not yet valid/.test(err.message)), "Unexpected error message:" + err.message
         done()
 
+    it 'throws if options.notbefore_skew is not a number', (done) ->
+      sp_options = { notbefore_skew: 'carrot_cake' }
+      request_options = { request_body: { SAMLResponse: '…' } }
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider {}
+
+      sp.post_assert idp, request_options, (err, data) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/notbefore_skew/.test(err.message)), "Unexpected error message: " + err.message
+        done()
+
+    it 'accepts an assertion with an NotBefore condition in the future but within the specified skew tolerance', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+        # 5 second grace period:
+        notbefore_skew: 5
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+
+      saml_response = get_test_file("response_notbefore_future_decoded.xml")\
+        .replace 'NotBefore="2054-03-12T21:35:05.387Z"',
+          # mimicking an IdP with a clock 3 seconds ahead of ours
+          "NotBefore=\"#{new Date(Date.now()+3000).toISOString()}\""
+      saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: saml_response_base64
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        console.error err if err?
+        assert !err?, 'Response was wrongly rejected'
+        done()
+
     it 'rejects an assertion with an NotOnOrAfter condition in the past', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'

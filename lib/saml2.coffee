@@ -501,12 +501,13 @@ module.exports.ServiceProvider =
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
       options.audience ?= @entity_id
+      options.notbefore_skew ?= 1
 
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -570,6 +571,9 @@ module.exports.ServiceProvider =
       unless options.request_body?.SAMLResponse? or options.request_body?.SAMLRequest?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
 
+      unless _.isNumber(options.notbefore_skew)
+        return setImmediate cb, new Error("Configuration error: `notbefore_skew` must be a number")
+
       saml_response = null
       response = {}
 
@@ -603,7 +607,7 @@ module.exports.ServiceProvider =
                 if options.ignore_timing != true
                   for attribute in conditions.attributes
                     condition = attribute.name.toLowerCase()
-                    if condition == 'notbefore' and Date.parse(attribute.value) > Date.now()
+                    if condition == 'notbefore' and Date.parse(attribute.value) > Date.now() + (options.notbefore_skew * 1000)
                       return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
                     if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
                       return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
