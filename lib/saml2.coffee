@@ -500,11 +500,14 @@ module.exports.ServiceProvider =
     constructor: (options) ->
       {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
+      options.audience ?= @entity_id
+      options.notbefore_skew ?= 1
+
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -568,6 +571,9 @@ module.exports.ServiceProvider =
       unless options.request_body?.SAMLResponse? or options.request_body?.SAMLRequest?
         return setImmediate cb, new Error("Request body does not contain SAMLResponse or SAMLRequest.")
 
+      unless _.isNumber(options.notbefore_skew)
+        return setImmediate cb, new Error("Configuration error: `notbefore_skew` must be a number")
+
       saml_response = null
       response = {}
 
@@ -595,6 +601,29 @@ module.exports.ServiceProvider =
                 return cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
 
               response.type = 'authn_response'
+
+              conditions = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Conditions')[0]
+              if conditions?
+                if options.ignore_timing != true
+                  for attribute in conditions.attributes
+                    condition = attribute.name.toLowerCase()
+                    if condition == 'notbefore' and Date.parse(attribute.value) > Date.now() + (options.notbefore_skew * 1000)
+                      return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
+                    if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
+                      return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
+
+                audience_restriction = conditions.getElementsByTagNameNS(XMLNS.SAML, 'AudienceRestriction')[0]
+                audiences = audience_restriction?.getElementsByTagNameNS(XMLNS.SAML, 'Audience')
+                if audiences?.length > 0
+                  validAudience = _.find audiences, (audience) ->
+                    audienceValue = audience.firstChild?.data?.trim()
+                    !_.isEmpty(audienceValue.trim()) and (
+                      (_.isRegExp(options.audience) and options.audience.test(audienceValue)) or
+                      (_.isString(options.audience) and options.audience.toLowerCase() == audienceValue.toLowerCase())
+                    )
+                  if !validAudience?
+                    return cb_wf new SAMLError('SAML Response is not valid for this audience')
+
               parse_authn_response(
                 saml_response,
                 [@private_key].concat(@alt_private_keys),

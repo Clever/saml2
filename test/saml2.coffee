@@ -418,6 +418,7 @@ describe 'saml2', ->
         certificates: get_test_file('test.crt')
       request_options =
         allow_unencrypted_assertion: true
+        ignore_timing: true
         request_body:
           SAMLResponse: get_test_file('response_external_signed_assertion.xml')
 
@@ -498,6 +499,7 @@ describe 'saml2', ->
         certificates: [ 'INVALIDCERTIFICATEDATA', get_test_file('test.crt') ]
         allow_unencrypted_assertion: true
       request_options =
+        ignore_timing: true
         request_body:
           SAMLResponse: get_test_file("response_unsigned_assertion.xml")
 
@@ -524,6 +526,7 @@ describe 'saml2', ->
       request_options =
         ignore_signature: true
         allow_unencrypted_assertion: true
+        ignore_timing: true
         request_body:
           SAMLResponse: get_test_file("empty_nameid.xml")
 
@@ -564,6 +567,7 @@ describe 'saml2', ->
         require_session_index: false
         ignore_signature: true
         allow_unencrypted_assertion: true
+        ignore_timing: true
         request_body:
           SAMLResponse: get_test_file("empty_session_index.xml")
 
@@ -587,6 +591,214 @@ describe 'saml2', ->
 
         assert.deepEqual response, expected_response
         done()
+
+    it 'rejects an assertion with an NotBefore condition in the future', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_notbefore_future.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/SAML Response is not yet valid/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
+    it 'throws if options.notbefore_skew is not a number', (done) ->
+      sp_options = { notbefore_skew: 'carrot_cake' }
+      request_options = { request_body: { SAMLResponse: '…' } }
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider {}
+
+      sp.post_assert idp, request_options, (err, data) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/notbefore_skew/.test(err.message)), "Unexpected error message: " + err.message
+        done()
+
+    it 'accepts an assertion with an NotBefore condition in the future but within the specified skew tolerance', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+        # 5 second grace period:
+        notbefore_skew: 5
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+
+      saml_response = get_test_file("response_notbefore_future_decoded.xml")\
+        .replace 'NotBefore="2054-03-12T21:35:05.387Z"',
+          # mimicking an IdP with a clock 3 seconds ahead of ours
+          "NotBefore=\"#{new Date(Date.now()+3000).toISOString()}\""
+      saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: saml_response_base64
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        console.error err if err?
+        assert !err?, 'Response was wrongly rejected'
+        done()
+
+    it 'rejects an assertion with an NotOnOrAfter condition in the past', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_unsigned_assertion.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/SAML Response is no longer valid/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
+    context 'when response contains AudienceRestriction', ->
+      sp_options = (properties = {}) ->
+        _.extend
+          entity_id: 'https://sp.example.com/metadata.xml'
+          private_key: get_test_file('test2.pem')
+          alt_private_keys: get_test_file('test.pem')
+          certificate: get_test_file('test2.crt')
+          alt_certs: get_test_file('test.crt')
+          assert_endpoint: 'https://sp.example.com/assert'
+        , properties
+      idp_options = (properties = {}) ->
+        _.extend
+          certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+        , properties
+      request_options = (properties = {}) ->
+        _.extend
+          require_session_index: false
+          ignore_signature: true
+          allow_unencrypted_assertion: true
+          request_body:
+            SAMLResponse: get_test_file("response_audience_no_timing.xml")
+        , properties
+
+      context 'and `audience` option is set to a string', ->
+          it 'rejects non-matching audience', (done) ->
+            sp = new saml2.ServiceProvider sp_options
+              audience: 'https://another-sp.example.com/metadata.xml'
+            idp = new saml2.IdentityProvider idp_options()
+
+            sp.post_assert idp, request_options(), (err, response) ->
+              assert (err instanceof Error), "Did not get expected error."
+              assert (/SAML Response is not valid for this audience/.test(err.message)), "Unexpected error message:" + err.message
+              done()
+
+          it 'accepts a matching audience', (done) ->
+            sp = new saml2.ServiceProvider sp_options
+              audience: 'https://sp.example.com/metadata.xml'
+            idp = new saml2.IdentityProvider idp_options()
+
+            sp.post_assert idp, request_options(), (err, response) ->
+              assert not err?, "Got error: #{err}"
+              done()
+
+      context 'and `audience` option is set to a regex', ->
+        it 'rejects non-matching audience', (done) ->
+          sp = new saml2.ServiceProvider sp_options
+            audience: /^https:\/\/another-sp\./
+          idp = new saml2.IdentityProvider idp_options()
+
+          sp.post_assert idp, request_options(), (err, response) ->
+            assert (err instanceof Error), "Did not get expected error."
+            assert (/SAML Response is not valid for this audience/.test(err.message)), "Unexpected error message:" + err.message
+            done()
+
+        it 'accepts a matching audience', (done) ->
+          sp = new saml2.ServiceProvider sp_options
+            audience: /^https:\/\/sp\.example\.com/
+          idp = new saml2.IdentityProvider idp_options()
+
+          sp.post_assert idp, request_options(), (err, response) ->
+            assert not err?, "Got error: #{err}"
+            done()
+
+      context 'and `audience` option is not set', ->
+        it 'accepts any audience', (done) ->
+          sp = new saml2.ServiceProvider sp_options()
+          idp = new saml2.IdentityProvider idp_options()
+
+          sp.post_assert idp, request_options(), (err, response) ->
+            assert not err?, "Got error: #{err}"
+            done()
+
+    context 'when response does not contain AudienceRestriction', ->
+      idp = new saml2.IdentityProvider
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        require_session_index: false
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_no_audience_no_timing.xml")
+      sp_options = (audience) ->
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+        audience: audience
+
+      it 'accepts a response with a matching string `audience` option', (done) ->
+          sp = new saml2.ServiceProvider sp_options('https://sp.example.com/metadata.xml')
+          sp.post_assert idp, request_options, (err, response) ->
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+      it 'accepts a response with a non-matching string `audience` option', (done) ->
+          sp = new saml2.ServiceProvider sp_options('https://whatever.com')
+          sp.post_assert idp, request_options, (err, response) ->
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+      it 'accepts a response with a non-matching regex `audience` option', (done) ->
+          sp = new saml2.ServiceProvider sp_options(/whatever/)
+          sp.post_assert idp, request_options, (err, response) ->
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
   describe 'redirect assert', ->
 
