@@ -1,6 +1,6 @@
 {
   "name": "trello-saml2-js",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "description": "SAML 2.0 node helpers, temporary fork for Trello",
   "author": "Clever",
   "main": "index.js",
