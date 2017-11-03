@@ -519,7 +519,10 @@ module.exports.ServiceProvider =
       { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_login_url, true
+        try
+          uri = url.parse identity_provider.sso_login_url, true
+        catch ex
+          return cb ex
         delete uri.search # If you provide search and query search overrides query :/
         if options.sign_get_request
           _(uri.query).extend sign_request(deflated.toString('base64'), @private_key, options.relay_state)
@@ -634,7 +637,10 @@ module.exports.ServiceProvider =
       {id, xml} = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_logout_url, true
+        try
+          uri = url.parse identity_provider.sso_logout_url, true
+        catch ex
+          return cb ex
         query = null
         if options.sign_get_request
           query = sign_request deflated.toString('base64'), @private_key, options.relay_state
@@ -659,7 +665,10 @@ module.exports.ServiceProvider =
       xml = create_logout_response @entity_id, options.in_response_to, identity_provider.sso_logout_url
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
-        uri = url.parse identity_provider.sso_logout_url
+        try
+          uri = url.parse identity_provider.sso_logout_url
+        catch ex
+          return cb ex
         if options.sign_get_request
           uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
         else
