@@ -715,6 +715,20 @@ describe 'saml2', ->
             SAMLResponse: get_test_file("response_audience_no_timing.xml")
         , properties
 
+      it 'rejects an empty audience', ->
+        sp = new saml2.ServiceProvider sp_options
+          audience: 'https://another-sp.example.com/metadata.xml'
+        idp = new saml2.IdentityProvider idp_options()
+
+        request = request_options
+          request_body:
+            SAMLResponse: get_test_file("response_empty_audience_no_timing.xml")
+
+        sp.post_assert idp, request, (err, response) ->
+          assert (err instanceof Error), "Did not get expected error."
+          assert (/SAML Response is not valid for this audience/.test(err.message)), "Unexpected error message:" + err.message
+          done()
+
       context 'and `audience` option is set to a string', ->
         it 'rejects non-matching audience', (done) ->
           sp = new saml2.ServiceProvider sp_options
