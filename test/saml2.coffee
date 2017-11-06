@@ -716,24 +716,24 @@ describe 'saml2', ->
         , properties
 
       context 'and `audience` option is set to a string', ->
-          it 'rejects non-matching audience', (done) ->
-            sp = new saml2.ServiceProvider sp_options
-              audience: 'https://another-sp.example.com/metadata.xml'
-            idp = new saml2.IdentityProvider idp_options()
+        it 'rejects non-matching audience', (done) ->
+          sp = new saml2.ServiceProvider sp_options
+            audience: 'https://another-sp.example.com/metadata.xml'
+          idp = new saml2.IdentityProvider idp_options()
 
-            sp.post_assert idp, request_options(), (err, response) ->
-              assert (err instanceof Error), "Did not get expected error."
-              assert (/SAML Response is not valid for this audience/.test(err.message)), "Unexpected error message:" + err.message
-              done()
+          sp.post_assert idp, request_options(), (err, response) ->
+            assert (err instanceof Error), "Did not get expected error."
+            assert (/SAML Response is not valid for this audience/.test(err.message)), "Unexpected error message:" + err.message
+            done()
 
-          it 'accepts a matching audience', (done) ->
-            sp = new saml2.ServiceProvider sp_options
-              audience: 'https://sp.example.com/metadata.xml'
-            idp = new saml2.IdentityProvider idp_options()
+        it 'accepts a matching audience', (done) ->
+          sp = new saml2.ServiceProvider sp_options
+            audience: 'https://sp.example.com/metadata.xml'
+          idp = new saml2.IdentityProvider idp_options()
 
-            sp.post_assert idp, request_options(), (err, response) ->
-              assert not err?, "Got error: #{err}"
-              done()
+          sp.post_assert idp, request_options(), (err, response) ->
+            assert not err?, "Got error: #{err}"
+            done()
 
       context 'and `audience` option is set to a regex', ->
         it 'rejects non-matching audience', (done) ->
