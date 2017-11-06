@@ -820,7 +820,7 @@ module.exports.ServiceProvider = ServiceProvider = (function() {
                   validAudience = _.find(audiences, function(audience) {
                     var audienceValue, ref4, ref5;
                     audienceValue = (ref4 = audience.firstChild) != null ? (ref5 = ref4.data) != null ? ref5.trim() : void 0 : void 0;
-                    return !_.isEmpty(audienceValue.trim()) && ((_.isRegExp(options.audience) && options.audience.test(audienceValue)) || (_.isString(options.audience) && options.audience.toLowerCase() === audienceValue.toLowerCase()));
+                    return !_.isEmpty(audienceValue != null ? audienceValue.trim() : void 0) && ((_.isRegExp(options.audience) && options.audience.test(audienceValue)) || (_.isString(options.audience) && options.audience.toLowerCase() === audienceValue.toLowerCase()));
                   });
                   if (validAudience == null) {
                     return cb_wf(new SAMLError('SAML Response is not valid for this audience'));
