@@ -617,7 +617,7 @@ module.exports.ServiceProvider =
                 if audiences?.length > 0
                   validAudience = _.find audiences, (audience) ->
                     audienceValue = audience.firstChild?.data?.trim()
-                    !_.isEmpty(audienceValue.trim()) and (
+                    !_.isEmpty(audienceValue?.trim()) and (
                       (_.isRegExp(options.audience) and options.audience.test(audienceValue)) or
                       (_.isString(options.audience) and options.audience.toLowerCase() == audienceValue.toLowerCase())
                     )
