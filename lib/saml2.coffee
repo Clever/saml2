@@ -182,12 +182,11 @@ extract_certificate_data = (certificate) ->
 # verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
 check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
-
   signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
+  sig.loadSignature signature[0]
   valid = sig.checkSignature xml
   if valid
     return get_signed_data(doc, sig.references)
