@@ -177,44 +177,6 @@ extract_certificate_data = (certificate) ->
 
   return cert_data.replace(/[\r\n]/g, '')
 
-# This checks the signature of a saml document and returns either array containing the signed data if valid, or null
-# if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
-# verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
-check_saml_signature = (xml, certificate) ->
-  doc = (new xmldom.DOMParser()).parseFromString(xml)
-
-  signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
-  return null unless signature.length is 1
-  sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
-  valid = sig.checkSignature xml
-  if valid
-    return get_signed_data(doc, sig.references)
-  else
-    return null
-
-# Gets the data that is actually signed according to xml-crypto. This function should mirror the way xml-crypto finds
-# elements for security reasons.
-get_signed_data = (doc, references) ->
-  _.map references, (ref) ->
-    uri = ref.uri
-    if uri[0] is '#'
-      uri = uri.substring(1)
-
-    elem = []
-    if uri is ""
-      elem = xmlcrypto.xpath(doc, "//*")
-    else
-      for idAttribute in ["Id", "ID"]
-        elem = xmlcrypto.xpath(doc, "//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']")
-        if elem.length > 0
-          break
-
-    unless elem.length > 0
-      throw new Error("Invalid signature; must be a reference to '#{ref.uri}'")
-    elem[0].toString()
-
 # Takes in an xml @dom containing a SAML Status and returns true if at least one status is Success.
 check_status_success = (dom) ->
   status = dom.getElementsByTagNameNS(XMLNS.SAMLP, 'Status')
@@ -277,6 +239,44 @@ decrypt_assertion = (dom, private_keys, cb) ->
     , -> cb new Error("Failed to decrypt assertion with provided key(s): #{util.inspect errors}")
   catch err
     cb new Error("Decrypt failed: #{util.inspect err}")
+
+# This checks the signature of a saml document and returns either array containing the signed data if valid, or null
+# if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
+# verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
+check_saml_signature = (xml, certificate) ->
+  doc = (new xmldom.DOMParser()).parseFromString(xml)
+
+  signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  return null unless signature.length is 1
+  sig = new xmlcrypto.SignedXml()
+  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
+  sig.loadSignature signature[0].toString()
+  valid = sig.checkSignature xml
+  if valid
+    return get_signed_data(doc, sig)
+  else
+    return null
+
+# Gets the data that is actually signed according to xml-crypto. This function should mirror the way xml-crypto finds
+# elements for security reasons.
+get_signed_data = (doc, sig) ->
+  _.map sig.references, (ref) ->
+    uri = ref.uri
+    if uri[0] is '#'
+      uri = uri.substring(1)
+
+    elem = []
+    if uri is ""
+      elem = xmlcrypto.xpath(doc, "//*")
+    else
+      for idAttribute in ["Id", "ID"]
+        elem = xmlcrypto.xpath(doc, "//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']")
+        if elem.length > 0
+          break
+
+    unless elem.length > 0
+      throw new Error("Invalid signature; must be a reference to '#{ref.uri}'")
+    sig.getCanonXml ref.transforms, elem[0], { inclusiveNamespacesPrefixList: ref.inclusiveNamespacesPrefixList }
 
 # Takes in an xml @dom of an object containing a SAML Response and returns an object containing the Destination and
 # InResponseTo attributes of the Response if present. It will throw an error if the Response is missing or does not

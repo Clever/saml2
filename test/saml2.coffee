@@ -176,7 +176,7 @@ describe 'saml2', ->
     describe 'check_saml_signature', ->
       it 'accepts signed xml', ->
         result = saml2.check_saml_signature(get_test_file("good_assertion.xml"), get_test_file("test.crt"))
-        assert.deepEqual result, [get_test_file("good_assertion.xml")]
+        assert.deepEqual result, [get_test_file("good_assertion_signed_data.xml")]
 
       it 'rejects xml without a signature', ->
         assert.equal null, saml2.check_saml_signature(get_test_file("unsigned_assertion.xml"), get_test_file("test.crt"))
