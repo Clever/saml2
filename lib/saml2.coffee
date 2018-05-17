@@ -26,7 +26,7 @@ class SAMLError extends Error
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
+create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format, is_passive) ->
   if context?
     context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
     context_element.push '@Comparison': context.comparison
@@ -43,6 +43,7 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
       '@AssertionConsumerServiceURL': assert_endpoint
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
       '@ForceAuthn': force_authn
+      '@IsPassive': is_passive
       'saml:Issuer': issuer
       NameIDPolicy:
         '@Format': nameid_format or 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
@@ -507,7 +508,7 @@ module.exports.ServiceProvider =
       @alt_certs = [].concat(@alt_certs or [])
 
       @shared_options = _(options).pick(
-        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew")
+        "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew", "is_passive")
 
     # Returns:
     #   Redirect URL at which a user can login
@@ -519,7 +520,7 @@ module.exports.ServiceProvider =
     create_login_request_url: (identity_provider, options, cb) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format, options.is_passive
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         try
@@ -542,7 +543,7 @@ module.exports.ServiceProvider =
     create_authn_request_xml: (identity_provider, options) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format, options.is_passive
       return sign_authn_request(xml, @private_key, options)
 
     # Returns:
