@@ -327,7 +327,7 @@ get_session_info = (dom, index_required=true) ->
   throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
 
   authn_statement = assertion[0].getElementsByTagNameNS(XMLNS.SAML, 'AuthnStatement')
-  throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length is 1
+  throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length > 0
 
   info =
     index: get_attribute_value authn_statement[0], 'SessionIndex'
