@@ -54,7 +54,6 @@ describe 'saml2', ->
         assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
         assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
-
     describe 'create_metadata', ->
       CERT_1 = get_test_file 'test.crt'
       CERT_2 = get_test_file 'test2.crt'
@@ -268,6 +267,9 @@ describe 'saml2', ->
         info = saml2.get_session_info dom_from_test_file('good_assertion.xml')
         assert.equal info.not_on_or_after, '2014-03-13T22:35:05.387Z'
 
+      it 'gets the first AuthnStatement only, ignore any others following', ->
+        info = saml2.get_session_info dom_from_test_file('good_assertion_multiple_authnContext.xml')
+        assert.equal info.index, '_2'
 
     describe 'parse_assertion_attributes', ->
       it 'correctly parses assertion attributes', ->
@@ -356,6 +358,7 @@ describe 'saml2', ->
           option6: "bottom"
         actual_options = saml2.set_option_defaults options_top, options_middle, options_bottom
         assert.deepEqual actual_options, expected_options
+
 
   describe 'post_assert', ->
     it 'returns a user object when passed a valid AuthnResponse', (done) ->

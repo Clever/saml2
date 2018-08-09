@@ -7,6 +7,7 @@ build: $(LIBS)
 
 lib-js/%.js : lib/%.coffee
 	node_modules/coffee-script/bin/coffee --bare -c -o $(@D) $(patsubst lib-js/%,lib/%,$(patsubst %.js,%.coffee,$@))
+	cp -f lib-js/saml2.js index.js
 
 test-cov:
 	rm -rf lib-js lib-js-cov

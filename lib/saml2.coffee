@@ -328,7 +328,7 @@ get_session_info = (dom, index_required=true) ->
 
   authn_statement = assertion[0].getElementsByTagNameNS(XMLNS.SAML, 'AuthnStatement')
   throw new Error("Expected 1 AuthnStatement; found #{authn_statement.length}") unless authn_statement.length > 0
-  if authn.statement.length > 1
+  if authn_statement.length > 1
     console.log "There are 2+ AuthnStatements, logging them here:\n #{authn_statement}"
 
   info =
@@ -426,7 +426,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # the attributes or an error if keys are incorrect or the response is invalid.
 parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, cb) ->
   user = {}
-  
+
   # strip of possible enveloping xml tags:
   saml_response = saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response')[0] or saml_response
 

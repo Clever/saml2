@@ -14,14 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Clever/saml2.git"
+    "url": "git://github.com/sylido/saml2.git"
   },
   "keywords": [
     "saml",
     "node"
   ],
   "bugs": {
-    "url": "https://github.com/Clever/saml2/issues"
+    "url": "https://github.com/sylido/saml2/issues"
   },
   "devDependencies": {
     "mocha": "~1.17.1",
