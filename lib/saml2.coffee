@@ -601,6 +601,9 @@ module.exports.ServiceProvider =
           switch
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'Response').length is 1
               unless check_status_success(saml_response)
+                status_msg = saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'StatusMessage')
+                if status_msg.length is 1
+                  return cb_wf new SAMLError(status_msg[0].textContent, {status: get_status(saml_response)})
                 return cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
 
               response.type = 'authn_response'
@@ -638,6 +641,9 @@ module.exports.ServiceProvider =
 
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
               unless check_status_success(saml_response)
+                status_msg = saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'StatusMessage')
+                if status_msg.length is 1
+                  return cb_wf new SAMLError(status_msg[0].textContent, {status: get_status(saml_response)})
                 return cb_wf new SAMLError("SAML Response was not success!", {status: get_status(saml_response)})
 
               response.type = 'logout_response'
