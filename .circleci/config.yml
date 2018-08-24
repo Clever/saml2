@@ -22,8 +22,11 @@ jobs:
     - run: npm test
     - run:
         command: |-
+          rm -rf ~/.local
           cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
+          sudo apt-get update
           sudo apt-get install python-dev
-          sudo pip install --upgrade awscli && aws --version
-          pip install --upgrade --user awscli
+          sudo pip install --upgrade awscli
+          aws --version
         name: Install awscli for ECR publish
+    - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
