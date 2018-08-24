@@ -1,0 +1,33 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/Clever/saml2
+    docker:
+    - image: circleci/node:6.14.3-stretch
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    steps:
+    - run:
+        command: cd $HOME && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
+        name: Clone ci-scripts
+    - checkout
+    - setup_remote_docker
+    - run:
+        command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+        name: Set up CircleCI artifacts directories
+    - run:
+        command: npm install
+        name: npm install
+    - run: npm install
+    - run: npm test
+    - run:
+        command: |-
+          rm -rf ~/.local
+          cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
+          sudo apt-get update
+          sudo apt-get install python-dev
+          sudo pip install --upgrade awscli
+          aws --version
+        name: Install awscli for ECR publish
+    - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
