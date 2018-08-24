@@ -19,7 +19,6 @@ jobs:
     - run:
         command: npm install
         name: npm install
-    - run: npm install
     - run: npm test
     - run:
         command: |-
