@@ -26,7 +26,7 @@ class SAMLError extends Error
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
+create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format, subject) ->
   if context?
     context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
     context_element.push '@Comparison': context.comparison
@@ -48,6 +48,15 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
         '@Format': nameid_format or 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
       RequestedAuthnContext: context_element
+      'saml:Subject':
+          'saml:NameID':
+              '@Format': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+              '#text': subject
+              'saml:SubjectConfirmation':
+                  '@Method': 'urn:oasis:names:tc:SAML:2.0:cm:bearer'
+                  'saml:SubjectConfirmationData':
+                      '@NotOnOrAfter': '2024-06-06T19:55:58Z'
+                      '@Recipient': destination
   .end()
   { id, xml }
 
@@ -519,7 +528,7 @@ module.exports.ServiceProvider =
     create_login_request_url: (identity_provider, options, cb) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format, options.subject
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         try
@@ -542,7 +551,7 @@ module.exports.ServiceProvider =
     create_authn_request_xml: (identity_provider, options) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format, options.subject
       return sign_authn_request(xml, @private_key, options)
 
     # Returns:
