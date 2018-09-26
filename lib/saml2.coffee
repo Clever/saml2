@@ -429,7 +429,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
     (cb_wf) ->
       decrypt_assertion saml_response, sp_private_keys, (err, result) ->
         return cb_wf null, result unless err?
-        return cb_wf err, result unless allow_unencrypted
+        return cb_wf err, result unless allow_unencrypted and err.message == "Expected 1 EncryptedAssertion; found 0."
         assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
         unless assertion.length is 1
           return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
