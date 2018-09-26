@@ -3,3 +3,4 @@ node_modules
 lib-js
 lib-js-cov
 *.html
+package-lock.json
