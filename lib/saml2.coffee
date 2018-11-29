@@ -545,6 +545,16 @@ module.exports.ServiceProvider =
       return sign_authn_request(xml, @private_key, options)
 
     # Returns:
+    #   An xml string with an AuthnRequest without an embedded signature
+    # Params:
+    #   identity_provider
+    #   options
+    create_authn_request_xml_no_signature: (identity_provider, options) ->
+      options = set_option_defaults options, identity_provider.shared_options, @shared_options
+      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      return xml
+
+    # Returns:
     #   An object containing the parsed response for a redirect assert.
     #   This type of assert inflates the response before parsing it.
     # Params:
