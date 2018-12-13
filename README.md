@@ -208,7 +208,6 @@ An object that can contain the below options.  All options are strings, unless s
   var idp_options = {
     sso_login_url: "https://idp.example.com/login",
     sso_logout_url: "https://idp.example.com/logout",
-    logout_binding: "HTTP-POST",
     certificates: [fs.readFileSync("cert-file1.crt").toString(), fs.readFileSync("cert-file2.crt").toString()],
     force_authn: true,
     sign_get_request: false,
@@ -245,7 +244,8 @@ var sp_options = {
   private_key: fs.readFileSync("key-file.pem").toString(),
   certificate: fs.readFileSync("cert-file.crt").toString(),
   assert_endpoint: "https://sp.example.com/assert",
-  logout_endpoint: "https://sp.example.com/logout"
+  logout_endpoint: "https://sp.example.com/logout",
+  logout_binding: "HTTP-POST"
 };
 var sp = new saml2.ServiceProvider(sp_options);
 
