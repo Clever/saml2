@@ -20,10 +20,3 @@ jobs:
         command: npm install
         name: npm install
     - run: npm test
-    - run:
-        command: |-
-          cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
-          sudo apt-get install python-dev
-          sudo pip install --upgrade awscli && aws --version
-          pip install --upgrade --user awscli
-        name: Install awscli for ECR publish
