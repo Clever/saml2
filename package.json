@@ -1,5 +1,5 @@
 {
-  "name": "saml2-js",
+  "name": "@flourish/saml2-js",
   "version": "3.0.1",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
