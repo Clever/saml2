@@ -193,6 +193,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `sso_login_url` - **Required** - Login url to use during a login request.
 - `sso_logout_url` - **Required** - Logout url to use during a logout request.
 - `certificates` - **Required** - (PEM format string or array of PEM format strings) - Certificate or certificates (array of certificate) for the identity provider.
+- `entity_id` - (String) - the identifier of the identity provider. If provided, assertions are required to have an `<Issuer>` that matches this value.
 - `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [SP](#ServiceProvider) or on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [[SP](#ServiceProvider) or on a per-method basis.
 - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [SP](#ServiceProvider) or on a per-method basis.
