@@ -422,7 +422,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # Takes a DOM of a saml_response, private keys with which to attempt decryption and the
 # certificate(s) of the identity provider that issued it and will return a user object containing
 # the attributes or an error if keys are incorrect or the response is invalid.
-parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, ignore_timing, notbefore_skew, sp_audience, cb) ->
+parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, ignore_timing, notbefore_skew, sp_audience, idp_entity_id, cb) ->
   user = {}
 
   async.waterfall [
@@ -499,6 +499,14 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       assertion_attributes = parse_assertion_attributes validated_assertion
       user = _.extend user, pretty_assertion_attributes(assertion_attributes)
       user = _.extend user, attributes: assertion_attributes
+
+      if idp_entity_id
+        issuer = validated_assertion.getElementsByTagNameNS(XMLNS.SAML, 'Issuer')
+        if issuer.length < 1
+          return cb_wf new Error("Assertion in the SAML Response did not have a required Issuer")
+        if issuer[0].textContent != idp_entity_id
+          return cb_wf new Error("Issuer in the Assertion in the SAML Response is wrong")
+
       cb_wf null, { user }
   ], cb
 
@@ -645,7 +653,8 @@ module.exports.ServiceProvider =
                 options.require_session_index,
                 options.ignore_timing,
                 options.notbefore_skew,
-                options.audience
+                options.audience,
+                identity_provider.entity_id,
                 cb_wf)
 
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
@@ -726,7 +735,7 @@ module.exports.ServiceProvider =
 module.exports.IdentityProvider =
   class IdentityProvider
     constructor: (options) ->
-      {@sso_login_url, @sso_logout_url, @certificates} = options
+      {@entity_id, @sso_login_url, @sso_logout_url, @certificates} = options
       @certificates = [ @certificates ] unless _.isArray(@certificates)
       @shared_options = _.pick(options, "force_authn", "sign_get_request", "allow_unencrypted_assertion")
 
