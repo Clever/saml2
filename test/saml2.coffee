@@ -1154,5 +1154,22 @@ describe 'saml2', ->
       method = dom.getElementsByTagName('SignatureMethod')[0]
       assert.equal method.attributes[0].value, 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
 
+    it 'can create a unsigned AuthnRequest xml document', () ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: 'other_service_cert'
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+      xml = sp.create_authn_request_xml_no_signature(idp)
+      dom = (new xmldom.DOMParser()).parseFromString xml
+      method = dom.getElementsByTagName('SignatureMethod')[0]
+      assert.equal method, null
+
     it 'can create metadata', (done) ->
       done()
