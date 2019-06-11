@@ -453,6 +453,10 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
           assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
           if assertion.length is 1
             return cb_wf null, signed_dom
+          assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'EncryptedAssertion')
+          if assertion.length is 1
+            return decrypt_assertion signed_dom, sp_private_keys, (err, result) ->
+              cb_wf err, (new xmldom.DOMParser()).parseFromString(result)
         return cb_wf new Error("Signed data did not contain a SAML Assertion!")
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
     (decrypted_assertion, cb_wf) ->
