@@ -1121,6 +1121,28 @@ describe 'saml2', ->
         assert parsed_url?.query?.Signature?, 'LogoutResponse is not signed'
         done()
 
+    it 'can create logout response url when sso_logout_url has a query string', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test.pem')
+        certificate: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      request_options =
+        in_response_to: '_1'
+        sign_get_request: true
+
+      sso_logout_url = 'https://idp.example.com/logout?Key=Value'
+      sp = new saml2.ServiceProvider sp_options
+
+      async.waterfall [
+        (cb_wf) -> sp.create_logout_response_url sso_logout_url, request_options, cb_wf
+      ], (err, logout_url) ->
+        assert not err?, "Error creating response logout URL: #{err}"
+        parsed_url = url.parse logout_url, true
+        assert parsed_url?.query?.SAMLResponse?, 'Could not find SAMLResponse in url query parameters'
+        assert parsed_url?.query?.Signature?, 'LogoutResponse is not signed'
+        done()
+
     it 'can create a signed AuthnRequest xml document', () ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
