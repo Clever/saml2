@@ -720,11 +720,15 @@ module.exports.ServiceProvider =
           uri = url.parse identity_provider.sso_logout_url
         catch ex
           return cb ex
+        query = null
         if options.sign_get_request
-          uri.query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
+          query = sign_request deflated.toString('base64'), @private_key, options.relay_state, true
         else
-          uri.query = SAMLResponse: deflated.toString 'base64'
-          uri.query.RelayState = options.relay_state if options.relay_state?
+          query = SAMLResponse: deflated.toString 'base64'
+          query.RelayState = options.relay_state if options.relay_state?
+        uri.query = _.extend(query, uri.query)
+        uri.search = null
+        uri.query = query
         cb null, url.format(uri)
 
     # Returns:
