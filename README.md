@@ -277,10 +277,10 @@ app.post("/assert", function(req, res) {
 
     // Save name_id and session_index for logout
     // Note:  In practice these should be saved in the user session, not globally.
-    name_id = saml_response.user.name_id;
-    session_index = saml_response.user.session_index;
+    var name_id = saml_response.user.name_id;
+    var session_index = saml_response.user.session_index;
 
-    res.send("Hello #{saml_response.user.name_id}!");
+    res.send(`Hello ${ name_id }! session_index: ${ session_index }`);
   });
 });
 
