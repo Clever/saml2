@@ -268,6 +268,9 @@ app.get("/login", function(req, res) {
   });
 });
 
+// Variables used in login/logout process
+var name_id, session_index;
+
 // Assert endpoint for when login completes
 app.post("/assert", function(req, res) {
   var options = {request_body: req.body};
@@ -280,7 +283,7 @@ app.post("/assert", function(req, res) {
     name_id = saml_response.user.name_id;
     session_index = saml_response.user.session_index;
 
-    res.send("Hello #{saml_response.user.name_id}!");
+    res.send("Hello #{name_id}! session_index: #{session_index}.");
   });
 });
 
