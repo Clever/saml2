@@ -403,7 +403,8 @@ describe 'saml2', ->
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
               'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
 
-        assert.deepEqual response, expected_response
+        assert.ok response.decrypted_assertion;
+        assert.deepEqual (_.omit response, 'decrypted_assertion'), expected_response
         done()
 
     it 'allows the signature to be embedded outside of the assertion', (done) ->
@@ -441,7 +442,8 @@ describe 'saml2', ->
             attributes:
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
 
-        assert.deepEqual response, expected_response
+        assert.ok response.decrypted_assertion;
+        assert.deepEqual (_.omit response, 'decrypted_assertion'), expected_response
         done()
 
     it 'errors if passed invalid data', (done) ->
@@ -548,7 +550,8 @@ describe 'saml2', ->
             session_not_on_or_after: '2016-02-11T21:12:09Z'
             attributes: {}
 
-        assert.deepEqual response, expected_response
+        assert.ok response.decrypted_assertion;
+        assert.deepEqual (_.omit response, 'decrypted_assertion'), expected_response
         done()
 
     it 'correctly parses an AuthnStatement with no session_index', (done) ->
@@ -589,7 +592,8 @@ describe 'saml2', ->
             session_not_on_or_after: '2016-02-11T21:12:09Z'
             attributes: {}
 
-        assert.deepEqual response, expected_response
+        assert.ok response.decrypted_assertion;
+        assert.deepEqual (_.omit response, 'decrypted_assertion'), expected_response
         done()
 
     it 'rejects an assertion with an NotBefore condition in the future', (done) ->
@@ -859,7 +863,8 @@ describe 'saml2', ->
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': [ 'Student' ]
               'http://schemas.xmlsoap.org/claims/CommonName': [ 'Test Student' ]
 
-        assert.deepEqual response, expected_response
+        assert.ok response.decrypted_assertion;
+        assert.deepEqual (_.omit response, 'decrypted_assertion'), expected_response
         done()
 
   describe 'ServiceProvider', ->
