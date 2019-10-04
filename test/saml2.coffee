@@ -1166,3 +1166,71 @@ describe 'saml2', ->
 
     it 'can create metadata', (done) ->
       done()
+
+  describe 'when an entity_id is provided for the IdP', ->
+    sp_options =
+      entity_id: 'https://sp.example.com/metadata.xml'
+      private_key: get_test_file('test.pem')
+      certificate: get_test_file('test.crt')
+      assert_endpoint: 'https://sp.example.com/assert'
+
+    sp = new saml2.ServiceProvider sp_options
+
+    it 'will raise an error if there is no issuer in the assertion', (done) ->
+      idp_options =
+        entity_id: 'https://idp.example.com/metadata.xml'
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt') ]
+
+      idp = new saml2.IdentityProvider idp_options
+
+      request_options =
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_without_issuer.xml")
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/Assertion in the SAML Response did not have a required Issuer/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
+    it 'will raise an error if the issuer doesn\'t match that in the IdentityProvider', (done) ->
+      idp_options =
+        entity_id: 'https://some-nonsense.example.com/metadata.xml'
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt') ]
+
+      idp = new saml2.IdentityProvider idp_options
+
+      request_options =
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_with_issuer.xml")
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/Issuer in the Assertion in the SAML Response is wrong/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
+    it 'will not raise an error if issuer in the assertion is correct', (done) ->
+      idp_options =
+        entity_id: 'https://idp.example.com/metadata.xml'
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt') ]
+
+      idp = new saml2.IdentityProvider idp_options
+
+      request_options =
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        request_body:
+          SAMLResponse: get_test_file("response_with_issuer.xml")
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert !err
+        done()
