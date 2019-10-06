@@ -422,7 +422,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # Takes a DOM of a saml_response, private keys with which to attempt decryption and the
 # certificate(s) of the identity provider that issued it and will return a user object containing
 # the attributes or an error if keys are incorrect or the response is invalid.
-parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, cb) ->
+parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, ignore_timing, notbefore_skew, sp_audience, cb) ->
   user = {}
 
   async.waterfall [
@@ -455,6 +455,29 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
             return cb_wf null, signed_dom
         return cb_wf new Error("Signed data did not contain a SAML Assertion!")
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
+    (decrypted_assertion, cb_wf) ->
+      conditions = decrypted_assertion.getElementsByTagNameNS(XMLNS.SAML, 'Conditions')[0]
+      if conditions?
+        if ignore_timing != true
+          for attribute in conditions.attributes
+            condition = attribute.name.toLowerCase()
+            if condition == 'notbefore' and Date.parse(attribute.value) > Date.now() + (notbefore_skew * 1000)
+              return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
+            if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
+              return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
+
+        audience_restriction = conditions.getElementsByTagNameNS(XMLNS.SAML, 'AudienceRestriction')[0]
+        audiences = audience_restriction?.getElementsByTagNameNS(XMLNS.SAML, 'Audience')
+        if audiences?.length > 0
+          validAudience = _.find audiences, (audience) ->
+            audienceValue = audience.firstChild?.data?.trim()
+            !_.isEmpty(audienceValue?.trim()) and (
+              (_.isRegExp(sp_audience) and sp_audience.test(audienceValue)) or
+              (_.isString(sp_audience) and sp_audience.toLowerCase() == audienceValue.toLowerCase())
+            )
+          if !validAudience?
+            return cb_wf new SAMLError('SAML Response is not valid for this audience')
+      return cb_wf null, decrypted_assertion
     (decrypted_assertion, cb_wf) ->
       try
         session_info = get_session_info decrypted_assertion, require_session_index
@@ -605,28 +628,6 @@ module.exports.ServiceProvider =
 
               response.type = 'authn_response'
 
-              conditions = saml_response.getElementsByTagNameNS(XMLNS.SAML, 'Conditions')[0]
-              if conditions?
-                if options.ignore_timing != true
-                  for attribute in conditions.attributes
-                    condition = attribute.name.toLowerCase()
-                    if condition == 'notbefore' and Date.parse(attribute.value) > Date.now() + (options.notbefore_skew * 1000)
-                      return cb_wf new SAMLError('SAML Response is not yet valid', {NotBefore: attribute.value})
-                    if condition == 'notonorafter' and Date.parse(attribute.value) <= Date.now()
-                      return cb_wf new SAMLError('SAML Response is no longer valid', {NotOnOrAfter: attribute.value})
-
-                audience_restriction = conditions.getElementsByTagNameNS(XMLNS.SAML, 'AudienceRestriction')[0]
-                audiences = audience_restriction?.getElementsByTagNameNS(XMLNS.SAML, 'Audience')
-                if audiences?.length > 0
-                  validAudience = _.find audiences, (audience) ->
-                    audienceValue = audience.firstChild?.data?.trim()
-                    !_.isEmpty(audienceValue?.trim()) and (
-                      (_.isRegExp(options.audience) and options.audience.test(audienceValue)) or
-                      (_.isString(options.audience) and options.audience.toLowerCase() == audienceValue.toLowerCase())
-                    )
-                  if !validAudience?
-                    return cb_wf new SAMLError('SAML Response is not valid for this audience')
-
               parse_authn_response(
                 saml_response,
                 [@private_key].concat(@alt_private_keys),
@@ -634,6 +635,9 @@ module.exports.ServiceProvider =
                 options.allow_unencrypted_assertion,
                 options.ignore_signature,
                 options.require_session_index,
+                options.ignore_timing,
+                options.notbefore_skew,
+                options.audience
                 cb_wf)
 
             when saml_response.getElementsByTagNameNS(XMLNS.SAMLP, 'LogoutResponse').length is 1
