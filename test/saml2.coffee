@@ -770,7 +770,7 @@ describe 'saml2', ->
             SAMLResponse: get_test_file("response_audience_no_timing.xml")
         , properties
 
-      it 'rejects an empty audience', ->
+      it 'rejects an empty audience', (done) ->
         sp = new saml2.ServiceProvider sp_options
           audience: 'https://another-sp.example.com/metadata.xml'
         idp = new saml2.IdentityProvider idp_options()
