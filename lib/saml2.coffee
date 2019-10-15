@@ -427,6 +427,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
 
   async.waterfall [
     (cb_wf) ->
+      # Decrypt the assertion
       decrypt_assertion saml_response, sp_private_keys, (err, result) ->
         return cb_wf null, result unless err?
         return cb_wf err, result unless allow_unencrypted and err.message == "Expected 1 EncryptedAssertion; found 0."
@@ -435,6 +436,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
           return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
         cb_wf null, assertion[0].toString()
     (result, cb_wf) ->
+      # Validate the signature
       debug result
       if ignore_signature
         return cb_wf null, (new xmldom.DOMParser()).parseFromString(result)
@@ -450,12 +452,20 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
 
         for sd in signed_data
           signed_dom = (new xmldom.DOMParser()).parseFromString(sd)
+
           assertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
           if assertion.length is 1
             return cb_wf null, signed_dom
+
+          encryptedAssertion = signed_dom.getElementsByTagNameNS(XMLNS.SAML, 'EncryptedAssertion')
+          if encryptedAssertion.length is 1
+            return decrypt_assertion saml_response, sp_private_keys, (err, result) ->
+              return cb_wf null, (new xmldom.DOMParser()).parseFromString(result) unless err?
+              return cb_wf err
         return cb_wf new Error("Signed data did not contain a SAML Assertion!")
       return cb_wf new Error("SAML Assertion signature check failed! (checked #{idp_certificates.length} certificate(s))")
     (decrypted_assertion, cb_wf) ->
+      # Validate the assertion conditions
       conditions = decrypted_assertion.getElementsByTagNameNS(XMLNS.SAML, 'Conditions')[0]
       if conditions?
         if ignore_timing != true
@@ -478,20 +488,18 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
           if !validAudience?
             return cb_wf new SAMLError('SAML Response is not valid for this audience')
       return cb_wf null, decrypted_assertion
-    (decrypted_assertion, cb_wf) ->
-      try
-        session_info = get_session_info decrypted_assertion, require_session_index
-        user.name_id = get_name_id decrypted_assertion
-        user.session_index = session_info.index
-        if session_info.not_on_or_after?
-          user.session_not_on_or_after = session_info.not_on_or_after
+    (validated_assertion, cb_wf) ->
+      # Populate attributes
+      session_info = get_session_info validated_assertion, require_session_index
+      user.name_id = get_name_id validated_assertion
+      user.session_index = session_info.index
+      if session_info.not_on_or_after?
+        user.session_not_on_or_after = session_info.not_on_or_after
 
-        assertion_attributes = parse_assertion_attributes decrypted_assertion
-        user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-        user = _.extend user, attributes: assertion_attributes
-        cb_wf null, { user }
-      catch err
-        return cb_wf err
+      assertion_attributes = parse_assertion_attributes validated_assertion
+      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+      user = _.extend user, attributes: assertion_attributes
+      cb_wf null, { user }
   ], cb
 
 parse_logout_request = (dom) ->
