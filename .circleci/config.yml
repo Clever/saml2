@@ -20,3 +20,4 @@ jobs:
         command: npm install
         name: npm install
     - run: npm test
+    - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
