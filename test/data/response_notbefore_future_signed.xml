@@ -1,0 +1,34 @@
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_2" Version="2.0" InResponseTo="_1" Destination="https://sp.example.com/assert">
+    <samlp:Status>
+        <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+    </samlp:Status>
+    <Assertion xmlns="urn:oasis:names:tc:SAML:2.0:assertion" ID="pfx0cf76399-e27b-9021-d26a-3a19012d2c1e" IssueInstant="2014-03-12T21:35:05.392Z" Version="2.0">
+        <Data ID="_5">This data has no meaning.</Data>
+        <Issuer>http://idp.example.com/metadata.xml</Issuer><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+  <ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+    <ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+  <ds:Reference URI="#pfx0cf76399-e27b-9021-d26a-3a19012d2c1e"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>I7HHjuQfXmELXf7TyRClXhzshwQ=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>K5JAWPa2KVtx2r4s5FN0XagYCUaxlN2OQbbzvqxZRbsnqFhluYaBR0Hlv/aygvGkv7OFBfpvojKsshHxPOArNT7CM1YNhV2RQ9v5IL7A396XvNpWdcMgGRL4FcAEzOcgAwmRYjYUfqChbY7cFKyMvyVVowdE4wGKyYAZiRwC8npbjZNuqTekofheF0fxnYm3CRzT5akztMugY0HHmy9WsochrDtoglwkjrZTSBlgYLGD3Yk7mCZos6IGo9zK6eF/ycPxGqR597WQOtLr9dnmhs0IE3iKQaS2hY2WwoPqJZgDPOoHtFBaDrkVY/JG0ucrg0eVkKtNHRKTYSgzv+JK/w==</ds:SignatureValue>
+<ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIDGTCCAgGgAwIBAgIJAO8HJfrb3JZeMA0GCSqGSIb3DQEBBQUAMCMxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0xNDAzMTgwMTE3MTdaFw0yNDAzMTcwMTE3MTdaMCMxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMFf1kCef6FTPMxQSoThAZGFNmixh8fRDLsUo58pEFwztBRUPWS6s6Ql8mA75aAEdo4+JVyE8QPi5F+fWbnToWkIw7E7YGl6s+EScSMQYHKCLq4mPHPMHtZspFowNp+Vax88SSUo1TKlpVNVIGim8JQ5SRi3p0aD6UAiu9WxQ5s+xHnDwgvQiu3Sa4COl5NQjkC1r2LrhJnJQQiw0hsn1nGgg15jEaDCZa8uPw1EtHv8smoZpjTbwRBVjXtzLskYIRyYLQjvqR+/QAd0XZcav0LdTwQR6obg/CwSgv7qG/WN6t25VIIGQDIUkVMBhLDmCh8QRpTvx1YWumSWW4D2k2kCAwEAAaNQME4wHQYDVR0OBBYEFLpo8Vz1m19xvPmzx+2wf2PaSTIpMB8GA1UdIwQYMBaAFLpo8Vz1m19xvPmzx+2wf2PaSTIpMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBALhwpLS6C+97nWrEICI5yetQjexCJGltMESg1llNYjsbIuJ/S4XbrVzhN4nfNGMSbj8rb/9FT6TSru5QLjJQQmj38pqsWtEhR2vBLclqGqEcJfvPMdn1qAJhJfhrs0KUpsX6xFTnSkNoyGxCP8Wh2C1L0NL5r+x58lkma5vL6ncwWYY+0C3bt1XbBRdeOZHUwuYTIcD+BCNixQiNor7KjO1TzpOb6V3m1SKHu8idDM5fUcKooGbV3WuE7AJrAG5fvt59V9MtMPc2FklVFminfTeYKboEaxZJxuPDbQs2IyJ/0lI8P0Mv4LIKj4+OipQ/fGbZuE7cOioPKKl02dE7eCA=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature>
+        <Subject>
+            <NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient">tstudent</NameID>
+            <SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+                <SubjectConfirmationData InResponseTo="_4" NotOnOrAfter="2014-03-12T21:40:05.392Z" Recipient="https://sp.example.com/assert"/>
+            </SubjectConfirmation>
+        </Subject>
+        <Conditions NotBefore="2054-03-12T21:35:05.387Z" NotOnOrAfter="2054-03-12T22:35:05.387Z">
+            <AudienceRestriction>
+                <Audience>https://sp.example.com/metadata.xml</Audience>
+            </AudienceRestriction>
+        </Conditions>
+        <AttributeStatement>
+            <Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname">
+                <AttributeValue>Test</AttributeValue>
+            </Attribute>
+        </AttributeStatement>
+        <AuthnStatement AuthnInstant="2014-03-12T21:35:05.354Z" SessionIndex="_3">
+            <AuthnContext>
+                <AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</AuthnContextClassRef>
+            </AuthnContext>
+        </AuthnStatement>
+    </Assertion>
+</samlp:Response>
