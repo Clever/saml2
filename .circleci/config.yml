@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: ~/Clever/saml2
     docker:
-    - image: circleci/node:10.16-stretch
+    - image: circleci/node:12-stretch
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
