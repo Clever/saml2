@@ -8,9 +8,10 @@
     "node": ">=0.10.x"
   },
   "scripts": {
-    "test": "make -Br test",
-    "test-cov": "make -Br test-cov",
-    "prepublish": "make build"
+    "build": "coffee --bare -c -o lib-js lib",
+    "test": "NODE_ENV=test mocha --require coffee-script/register test/*.coffee",
+    "test-cov": "NODE_ENV=test nyc --extension .coffee -r html -r text mocha --require coffee-script/register test/*.coffee",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,8 @@
   },
   "devDependencies": {
     "coffee-script": "^1.12.0",
-    "mocha": "^7.1.1"
+    "mocha": "^7.1.1",
+    "nyc": "^15.0.0"
   },
   "dependencies": {
     "async": "^2.5.0",
