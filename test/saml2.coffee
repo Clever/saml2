@@ -620,6 +620,34 @@ describe 'saml2', ->
         assert (/SAML Response is not yet valid/.test(err.message)), "Unexpected error message:" + err.message
         done()
 
+    it 'rejects an AuthnStatement with no session_index if required', (done) ->
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        require_session_index: true
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        ignore_timing: true
+        request_body:
+          SAMLResponse: get_test_file("empty_session_index.xml")
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert (/SessionIndex not an attribute of AuthnStatement/.test(err.message)), "Unexpected error message:" + err.message
+        done()
+
     it 'rejects an encrypted assertion with an NotBefore condition in the future', (done) ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
