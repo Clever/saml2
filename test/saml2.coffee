@@ -1128,6 +1128,12 @@ describe 'saml2', ->
 
       xml = sp.create_authn_request_xml(idp)
       dom = (new xmldom.DOMParser()).parseFromString xml
+
+      authnRequestChildNodes = dom.getElementsByTagName('AuthnRequest')[0].childNodes
+      assert.equal authnRequestChildNodes[0].tagName, 'saml:Issuer'
+      assert.equal authnRequestChildNodes[1].tagName, 'Signature'
+      assert.equal authnRequestChildNodes[2].tagName, 'NameIDPolicy'
+
       method = dom.getElementsByTagName('SignatureMethod')[0]
       assert.equal method.attributes[0].value, 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
 
