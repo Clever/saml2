@@ -12,6 +12,10 @@ xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 SignedXml     = require('xml-crypto').SignedXml
 
+authnRequestXPath = '/*[local-name(.)="AuthnRequest" and namespace-uri(.)="urn:oasis:names:tc:SAML:2.0:protocol"]';
+issuerXPath = '/*[local-name(.)="Issuer" and namespace-uri(.)="urn:oasis:names:tc:SAML:2.0:assertion"]';
+defaultTransforms = [ 'http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#' ];
+
 XMLNS =
   SAML: 'urn:oasis:names:tc:SAML:2.0:assertion'
   SAMLP: 'urn:oasis:names:tc:SAML:2.0:protocol'
@@ -54,9 +58,9 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
 # Adds an embedded signature to a previously generated AuthnRequest
 sign_authn_request = (xml, private_key, options) ->
   signer = new SignedXml null, options
-  signer.addReference "//*[local-name(.)='AuthnRequest']", ['http://www.w3.org/2000/09/xmldsig#enveloped-signature','http://www.w3.org/2001/10/xml-exc-c14n#']
+  signer.addReference authnRequestXPath, defaultTransforms
   signer.signingKey = private_key
-  signer.computeSignature xml
+  signer.computeSignature xml, { location: { reference: authnRequestXPath + issuerXPath, action: 'after' }}
   return signer.getSignedXml()
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
