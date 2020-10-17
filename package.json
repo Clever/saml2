@@ -5,7 +5,7 @@
   "author": "Clever",
   "main": "index.js",
   "engines": {
-    "node": ">=0.10.x"
+    "node": ">=10.x"
   },
   "scripts": {
     "test": "make -Br test",
@@ -24,17 +24,17 @@
     "url": "https://github.com/Clever/saml2/issues"
   },
   "devDependencies": {
-    "mocha": "^3.5.0",
+    "mocha": "^8.2.0",
     "coffee-script": "^1.12.0"
   },
   "dependencies": {
-    "async": "^2.5.0",
-    "debug": "^2.6.0",
-    "underscore": "^1.8.0",
-    "xml-crypto": "^0.10.0",
-    "xml-encryption": "^0.11.0",
-    "xml2js": "^0.4.0",
-    "xmlbuilder": "~2.2.0",
-    "xmldom": "^0.1.0"
+    "async": "^3.2.0",
+    "debug": "^4.2.0",
+    "underscore": "^1.11.0",
+    "xml-crypto": "^2.0.0",
+    "xml-encryption": "^1.2.1",
+    "xml2js": "^0.4.23",
+    "xmlbuilder2": "^2.4.0",
+    "xmldom": "^0.3.0"
   }
 }
