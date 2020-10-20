@@ -1,6 +1,6 @@
 {
   "name": "@oguennec/saml2",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "main": "index.js",

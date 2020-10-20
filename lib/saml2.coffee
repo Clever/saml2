@@ -56,6 +56,8 @@ sign_authn_request = (xml, private_key, options) ->
   signer = new SignedXml null, options
   signer.addReference "//*[local-name(.)='AuthnRequest']", ['http://www.w3.org/2000/09/xmldsig#enveloped-signature','http://www.w3.org/2001/10/xml-exc-c14n#']
   signer.signingKey = private_key
+  signer.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+  signer.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n"
   signer.computeSignature xml
   return signer.getSignedXml()
 
