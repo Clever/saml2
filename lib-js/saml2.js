@@ -67,22 +67,23 @@ create_authn_request = function(issuer, assert_endpoint, destination, force_auth
   }
   id = '_' + crypto.randomBytes(21).toString('hex');
   xml = xmlbuilder.create({
-    AuthnRequest: {
-      '@xmlns': XMLNS.SAMLP,
+    'samlp:AuthnRequest': {
+      '@xmlns:samlp': XMLNS.SAMLP,
       '@xmlns:saml': XMLNS.SAML,
-      '@Version': '2.0',
       '@ID': id,
+      '@Version': '2.0',
+      '@ProviderName': issuer,
       '@IssueInstant': (new Date()).toISOString(),
       '@Destination': destination,
-      '@AssertionConsumerServiceURL': assert_endpoint,
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-      '@ForceAuthn': force_authn,
+      '@AssertionConsumerServiceURL': assert_endpoint,  
+      // '@ForceAuthn': force_authn,
       'saml:Issuer': issuer,
-      NameIDPolicy: {
+      'samlp:NameIDPolicy': {
         '@Format': nameid_format || 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
         '@AllowCreate': 'true'
       },
-      RequestedAuthnContext: context_element
+      'samlp:RequestedAuthnContext': context_element
     }
   }).end();
   return {
