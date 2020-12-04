@@ -490,11 +490,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       return cb_wf null, decrypted_assertion
     (validated_assertion, cb_wf) ->
       # Populate attributes
-      try
-        session_info = get_session_info validated_assertion, require_session_index
-      catch error
-        return cb_wf error
-
+      session_info = get_session_info validated_assertion, require_session_index
       user.name_id = get_name_id validated_assertion
       user.session_index = session_info.index
       if session_info.not_on_or_after?
