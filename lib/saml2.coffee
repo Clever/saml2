@@ -184,9 +184,20 @@ extract_certificate_data = (certificate) ->
 # This checks the signature of a saml document and returns either array containing the signed data if valid, or null
 # if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
 # verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
-check_saml_signature = (xml, certificate) ->
+check_saml_signature = (_xml, certificate) ->
+  # xml-crypto requires that whitespace is normalized as such:
+  # https://github.com/yaronn/xml-crypto/commit/17f75c538674c0afe29e766b058004ad23bd5136#diff-5dfe38baf287dcf756a17c2dd63483781b53bf4b669e10efdd01e74bcd8e780aL69
+  xml = _xml.replace(/\r\n?/g, '\n')
   doc = (new xmldom.DOMParser()).parseFromString(xml)
-  signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  # Find the correct section of the XML doc to check the signature for
+  maybe_req = xmlcrypto.xpath(doc, "//*[local-name(.)='AuthnRequest']")
+  maybe_req = maybe_req && maybe_req[0]
+  maybe_resp = xmlcrypto.xpath(doc, "//*[local-name(.)='Response']")
+  maybe_resp = maybe_resp && maybe_resp[0]
+  maybe_assert = xmlcrypto.xpath(doc, "//*[local-name(.)='Assertion']")
+  maybe_assert = maybe_assert && maybe_assert[0]
+  to_check = maybe_req || maybe_resp || maybe_assert
+  signature = xmlcrypto.xpath(to_check, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
