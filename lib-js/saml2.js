@@ -268,10 +268,18 @@ extract_certificate_data = function(certificate) {
   return cert_data.replace(/[\r\n]/g, '');
 };
 
-check_saml_signature = function(xml, certificate) {
-  var doc, sig, signature, valid;
+check_saml_signature = function(_xml, certificate) {
+  var doc, maybe_assert, maybe_req, maybe_resp, sig, signature, to_check, valid, xml;
+  xml = _xml.replace(/\r\n?/g, '\n');
   doc = (new xmldom.DOMParser()).parseFromString(xml);
-  signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']");
+  maybe_req = xmlcrypto.xpath(doc, "//*[local-name(.)='AuthnRequest']");
+  maybe_req = maybe_req && maybe_req[0];
+  maybe_resp = xmlcrypto.xpath(doc, "//*[local-name(.)='Response']");
+  maybe_resp = maybe_resp && maybe_resp[0];
+  maybe_assert = xmlcrypto.xpath(doc, "//*[local-name(.)='Assertion']");
+  maybe_assert = maybe_assert && maybe_assert[0];
+  to_check = maybe_req || maybe_resp || maybe_assert;
+  signature = xmlcrypto.xpath(to_check, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']");
   if (signature.length !== 1) {
     return null;
   }
