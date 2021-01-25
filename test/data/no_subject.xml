@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<samlp:Response Destination="https://sp.example.com/assert" ID="_2" InResponseTo="_1" Version="2.0" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </samlp:Status>
+  <saml:Assertion ID="_3" IssueInstant="2016-02-10T21:12:09Z" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <saml:Issuer>https://idp.example.com/metadata.xml</saml:Issuer>
+    <saml:Conditions NotBefore="2016-02-10T21:09:09Z" NotOnOrAfter="2016-02-10T21:15:09Z">
+      <saml:AudienceRestriction>
+        <saml:Audience>https://sp.example.com/metadata.xml</saml:Audience>
+      </saml:AudienceRestriction>
+    </saml:Conditions>
+    <saml:AuthnStatement AuthnInstant="2016-02-10T21:12:08Z" SessionIndex="_4" SessionNotOnOrAfter="2016-02-11T21:12:09Z">
+      <saml:AuthnContext>
+        <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef>
+      </saml:AuthnContext>
+    </saml:AuthnStatement>
+    <saml:AttributeStatement>
+      <Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname">
+        <AttributeValue>Test</AttributeValue>
+      </Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>

@@ -490,16 +490,19 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       return cb_wf null, decrypted_assertion
     (validated_assertion, cb_wf) ->
       # Populate attributes
-      session_info = get_session_info validated_assertion, require_session_index
-      user.name_id = get_name_id validated_assertion
-      user.session_index = session_info.index
-      if session_info.not_on_or_after?
-        user.session_not_on_or_after = session_info.not_on_or_after
+      try
+        session_info = get_session_info validated_assertion, require_session_index
+        user.name_id = get_name_id validated_assertion
+        user.session_index = session_info.index
+        if session_info.not_on_or_after?
+          user.session_not_on_or_after = session_info.not_on_or_after
 
-      assertion_attributes = parse_assertion_attributes validated_assertion
-      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-      user = _.extend user, attributes: assertion_attributes
-      cb_wf null, { user }
+        assertion_attributes = parse_assertion_attributes validated_assertion
+        user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+        user = _.extend user, attributes: assertion_attributes
+        cb_wf null, { user }
+      catch err
+        return cb_wf err
   ], cb
 
 parse_logout_request = (dom) ->
