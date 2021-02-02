@@ -248,15 +248,9 @@ check_saml_signature = (_xml, certificate) ->
   xml = _xml.replace(/\r\n?/g, '\n')
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  # Find the correct section of the XML doc to check the signature for
-  maybe_req = xmlcrypto.xpath(doc, "//*[local-name(.)='AuthnRequest']")
-  maybe_req = maybe_req && maybe_req[0]
-  maybe_resp = xmlcrypto.xpath(doc, "//*[local-name(.)='Response']")
-  maybe_resp = maybe_resp && maybe_resp[0]
-  maybe_assert = xmlcrypto.xpath(doc, "//*[local-name(.)='Assertion']")
-  maybe_assert = maybe_assert && maybe_assert[0]
-  to_check = maybe_req || maybe_resp || maybe_assert
-  signature = xmlcrypto.xpath(to_check, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
+  # Call documentElement to explicitly start from the root element of the document.
+  signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
