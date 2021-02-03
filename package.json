@@ -9,8 +9,7 @@
   },
   "scripts": {
     "test": "make -Br test",
-    "test-cov": "make -Br test-cov",
-    "prepublish": "make build"
+    "test-cov": "make -Br test-cov"
   },
   "repository": {
     "type": "git",
