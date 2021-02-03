@@ -1,6 +1,6 @@
 {
   "name": "saml2-js",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "main": "index.js",
