@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "async": "^3.2.0",
-    "debug": "^2.6.0",
+    "debug": "^4.3.0",
     "underscore": "^1.8.0",
     "xml-crypto": "^0.10.0",
     "xml-encryption": "^1.2.1",
