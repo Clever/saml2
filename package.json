@@ -24,8 +24,9 @@
     "url": "https://github.com/Clever/saml2/issues"
   },
   "devDependencies": {
-    "mocha": "^8.2.0",
-    "coffee-script": "^1.12.0"
+    "coffee-script": "^1.12.0",
+    "jscoverage": "^0.6.0",
+    "mocha": "^8.2.0"
   },
   "dependencies": {
     "async": "^2.5.0",
