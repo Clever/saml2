@@ -10,10 +10,10 @@ lib-js/%.js : lib/%.coffee
 
 test-cov:
 	rm -rf lib-js lib-js-cov
-	coffee -c -o lib-js lib
-	jscoverage lib-js lib-js-cov
-	NODE_ENV=test TEST_COV_SAML2=1 node_modules/mocha/bin/mocha -R html-cov --ignore-leaks --compilers coffee:coffee-script/register test/*.coffee | tee coverage.html
-	open coverage.html
+	node_modules/.bin/coffee -c -o lib-js lib
+	node_modules/.bin/jscoverage lib-js lib-js-cov
+	NODE_ENV=test TEST_COV_SAML2=1 node_modules/mocha/bin/mocha --ignore-leaks --require coffee-script/register test/*.coffee
+	open coverage/index.html
 
 test: build
 	NODE_ENV=test node_modules/mocha/bin/mocha --ignore-leaks --timeout 60000 -R spec --require coffee-script/register test/*.coffee
