@@ -38,6 +38,6 @@
     "xml-encryption": "^1.2.1",
     "xml2js": "^0.4.0",
     "xmlbuilder": "~2.2.0",
-    "xmldom": "^0.1.0"
+    "xmldom": "^0.4.0"
   }
 }
