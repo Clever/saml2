@@ -41,8 +41,8 @@ An object that can contain the below options.  All options are strings, unless s
 - `private_key` - **Required** - (PEM format string) - Private key for the service provider.
 - `certificate` - **Required** - (PEM format string) - Certificate for the service provider.
 - `assert_endpoint` - **Required** - URL of service provider assert endpoint.
-- `logout_endpoint` - URL of service provider logout endpoint.
-- `logout_binding` - Binding of service provider logout endpoint ("HTTP-POST" or "HTTP-Redirect").
+- `logout_endpoint` - URL of service provider logout endpoint. Defaults to `assert_endpoint`.
+- `logout_binding` - Binding of service provider logout endpoint ("HTTP-POST" or "HTTP-Redirect"). Defaults to `HTTP-Redirect`.
 - `alt_private_keys` - (Array of PEM format strings) - Additional private keys to use when attempting to decrypt responses. Useful for adding backward-compatibility for old certificates after a rollover.
 - `alt_certs` - (Array of PEM format strings) - Additional certificates to expose in the SAML metadata. Useful for staging new certificates for rollovers.
 - `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
