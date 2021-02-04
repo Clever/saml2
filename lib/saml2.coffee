@@ -242,14 +242,19 @@ decrypt_assertion = (dom, private_keys, cb) ->
 # This checks the signature of a saml document and returns either array containing the signed data if valid, or null
 # if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
 # verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
-check_saml_signature = (xml, certificate) ->
+check_saml_signature = (_xml, certificate) ->
+  # xml-crypto requires that whitespace is normalized as such:
+  # https://github.com/yaronn/xml-crypto/commit/17f75c538674c0afe29e766b058004ad23bd5136#diff-5dfe38baf287dcf756a17c2dd63483781b53bf4b669e10efdd01e74bcd8e780aL69
+  xml = _xml.replace(/\r\n?/g, '\n')
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  signature = xmlcrypto.xpath(doc, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
+  # Call documentElement to explicitly start from the root element of the document.
+  signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
+  sig.loadSignature signature[0]
   valid = sig.checkSignature xml
   if valid
     return get_signed_data(doc, sig)
