@@ -59,7 +59,7 @@ sign_authn_request = (xml, private_key, options) ->
   return signer.getSignedXml()
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
-create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
+create_metadata = (entity_id, assert_endpoint, logout_endpoint, logout_binding, signing_certificates, encryption_certificates) ->
   signing_cert_descriptors = for signing_certificate in signing_certificates or []
     {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
 
@@ -78,8 +78,8 @@ create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_
         .concat encryption_cert_descriptors
         .concat [
           'md:SingleLogoutService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-            '@Location': assert_endpoint
+            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:' + logout_binding
+            '@Location': logout_endpoint
           'md:AssertionConsumerService':
             '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
             '@Location': assert_endpoint
@@ -536,8 +536,10 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
+      {@entity_id, @private_key, @certificate, @assert_endpoint, @logout_endpoint, @logout_binding, @alt_private_keys, @alt_certs} = options
 
+      @logout_endpoint ?= @assert_endpoint
+      @logout_binding ?= "HTTP-Redirect"
       options.audience ?= @entity_id
       options.notbefore_skew ?= 1
 
@@ -728,7 +730,7 @@ module.exports.ServiceProvider =
     #   XML metadata, used during initial SAML configuration
     create_metadata: =>
       certs = [@certificate].concat @alt_certs
-      create_metadata @entity_id, @assert_endpoint, certs, certs
+      create_metadata @entity_id, @assert_endpoint, @logout_endpoint, @logout_binding, certs, certs
 
 module.exports.IdentityProvider =
   class IdentityProvider
