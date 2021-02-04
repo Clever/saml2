@@ -5,7 +5,7 @@ debug         = require('debug') 'saml2'
 {parseString} = require 'xml2js'
 url           = require 'url'
 util          = require 'util'
-xmlbuilder    = require 'xmlbuilder'
+xmlbuilder    = require 'xmlbuilder2'
 xmlcrypto     = require 'xml-crypto'
 xmldom        = require 'xmldom'
 xmlenc        = require 'xml-encryption'
@@ -28,8 +28,7 @@ class SAMLError extends Error
 # request.
 create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
   if context?
-    context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
-    context_element.push '@Comparison': context.comparison
+    context_element = { 'saml:AuthnContextClassRef': context.class_refs, '@Comparison': context.comparison }
 
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create

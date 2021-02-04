@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "main": "index.js",
   "engines": {
-    "node": ">=0.10.x"
+    "node": ">=10.x"
   },
   "scripts": {
     "build": "coffee --bare -c -o lib-js lib",
@@ -31,13 +31,13 @@
     "nyc": "^15.0.0"
   },
   "dependencies": {
-    "async": "^2.5.0",
-    "debug": "^2.6.0",
+    "async": "^3.2.0",
+    "debug": "^4.3.0",
     "underscore": "^1.8.0",
     "xml-crypto": "^0.10.0",
     "xml-encryption": "^1.2.1",
     "xml2js": "^0.4.0",
-    "xmlbuilder": "~2.2.0",
-    "xmldom": "^0.1.0"
+    "xmlbuilder2": "^2.4.0",
+    "xmldom": "^0.4.0"
   }
 }
