@@ -51,7 +51,7 @@ describe 'saml2', ->
         authn_request = dom.getElementsByTagName('AuthnRequest')[0]
 
         requested_authn_context = authn_request.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'RequestedAuthnContext')[0]
-        assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
+        assert _(requested_authn_context.attributes).some((attr) -> attr.name is 'Comparison' and attr.value is 'exact'), "Could not determine if specified attribute had proper value (Comparison=exact)"
         assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
 
