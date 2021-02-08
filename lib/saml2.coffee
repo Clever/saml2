@@ -61,10 +61,10 @@ sign_authn_request = (xml, private_key, options) ->
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
 create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
   signing_cert_descriptors = for signing_certificate in signing_certificates or []
-    {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
+    certificate_to_keyinfo('signing', signing_certificate)
 
   encryption_cert_descriptors = for encryption_certificate in encryption_certificates or []
-    {'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate)}
+    certificate_to_keyinfo('encryption', encryption_certificate)
 
   xmlbuilder.create
     'md:EntityDescriptor':
@@ -72,19 +72,16 @@ create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_
       '@xmlns:ds': XMLNS.DS
       '@entityID': entity_id
       '@validUntil': (new Date(Date.now() + 1000 * 60 * 60)).toISOString()
-      'md:SPSSODescriptor': []
-        .concat {'@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'}
-        .concat signing_cert_descriptors
-        .concat encryption_cert_descriptors
-        .concat [
-          'md:SingleLogoutService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-            '@Location': assert_endpoint
-          'md:AssertionConsumerService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
-            '@Location': assert_endpoint
-            '@index': '0'
-        ]
+      'md:SPSSODescriptor':
+        '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'
+        'md:KeyDescriptor': signing_cert_descriptors.concat(encryption_cert_descriptors)
+        'md:SingleLogoutService':
+          '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+          '@Location': assert_endpoint
+        'md:AssertionConsumerService':
+          '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+          '@Location': assert_endpoint
+          '@index': '0'
   .end()
 
 # Creates a LogoutRequest and returns it as a string of xml.
