@@ -135,6 +135,13 @@ describe 'saml2', ->
           has_attribute logout_service, 'Location', 'https://sp.example.com/assert',
           "Expected to find an SingleLogoutService with location 'htps://sp.example.com/assert'")
 
+      it 'contains only one SPSSODescriptor', ->
+        sp_sso_descriptor = entity_descriptor.getElementsByTagNameNS(
+          'urn:oasis:names:tc:SAML:2.0:metadata', 'SPSSODescriptor')
+
+        assert.equal(
+          sp_sso_descriptor.length, 1, "Expected 1 SP SSO descriptor; found #{sp_sso_descriptor.length}")
+
     describe 'format_pem', ->
       it 'formats an unformatted private key', ->
         raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
