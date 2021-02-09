@@ -49,6 +49,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `ignore_signature` - (Boolean) - If true, it'll not check the signature.
 - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 
 #### Returns the following functions
