@@ -46,6 +46,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
 - `notbefore_skew` - (Number) – To account for clock skew between IdP and SP, accept responses with a NotBefore condition ahead of the current time (according to our clock) by this number of seconds. Defaults to 1. Set it to 0 for optimum security but no tolerance for clock skew.
 - `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `is_passive` - (Boolean) - If true, a compliant [IdP](#IdentityProvider) will not prompt the user for input and will return an http error if doing so would be required.
 - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
