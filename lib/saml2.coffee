@@ -617,7 +617,7 @@ module.exports.ServiceProvider =
 
       async.waterfall [
         (cb_wf) ->
-          raw = new Buffer(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
+          raw = Buffer.from(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
 
           # Inflate response for redirect requests before parsing it.
           if (options.get_request)
