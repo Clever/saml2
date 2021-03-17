@@ -5,7 +5,7 @@ debug         = require('debug') 'saml2'
 {parseString} = require 'xml2js'
 url           = require 'url'
 util          = require 'util'
-xmlbuilder    = require 'xmlbuilder'
+xmlbuilder    = require 'xmlbuilder2'
 xmlcrypto     = require 'xml-crypto'
 xmldom        = require 'xmldom'
 xmlenc        = require 'xml-encryption'
@@ -28,8 +28,7 @@ class SAMLError extends Error
 # request.
 create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
   if context?
-    context_element = _(context.class_refs).map (class_ref) -> 'saml:AuthnContextClassRef': class_ref
-    context_element.push '@Comparison': context.comparison
+    context_element = { 'saml:AuthnContextClassRef': context.class_refs, '@Comparison': context.comparison }
 
   id = '_' + crypto.randomBytes(21).toString('hex')
   xml = xmlbuilder.create
@@ -62,10 +61,10 @@ sign_authn_request = (xml, private_key, options) ->
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
 create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_certificates) ->
   signing_cert_descriptors = for signing_certificate in signing_certificates or []
-    {'md:KeyDescriptor': certificate_to_keyinfo('signing', signing_certificate)}
+    certificate_to_keyinfo('signing', signing_certificate)
 
   encryption_cert_descriptors = for encryption_certificate in encryption_certificates or []
-    {'md:KeyDescriptor': certificate_to_keyinfo('encryption', encryption_certificate)}
+    certificate_to_keyinfo('encryption', encryption_certificate)
 
   xmlbuilder.create
     'md:EntityDescriptor':
@@ -73,19 +72,16 @@ create_metadata = (entity_id, assert_endpoint, signing_certificates, encryption_
       '@xmlns:ds': XMLNS.DS
       '@entityID': entity_id
       '@validUntil': (new Date(Date.now() + 1000 * 60 * 60)).toISOString()
-      'md:SPSSODescriptor': []
-        .concat {'@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'}
-        .concat signing_cert_descriptors
-        .concat encryption_cert_descriptors
-        .concat [
-          'md:SingleLogoutService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-            '@Location': assert_endpoint
-          'md:AssertionConsumerService':
-            '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
-            '@Location': assert_endpoint
-            '@index': '0'
-        ]
+      'md:SPSSODescriptor':
+        '@protocolSupportEnumeration': 'urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol'
+        'md:KeyDescriptor': signing_cert_descriptors.concat(encryption_cert_descriptors)
+        'md:SingleLogoutService':
+          '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+          '@Location': assert_endpoint
+        'md:AssertionConsumerService':
+          '@Binding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+          '@Location': assert_endpoint
+          '@index': '0'
   .end()
 
 # Creates a LogoutRequest and returns it as a string of xml.
@@ -249,19 +245,13 @@ check_saml_signature = (_xml, certificate) ->
   xml = _xml.replace(/\r\n?/g, '\n')
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
-  # Find the correct section of the XML doc to check the signature for
-  maybe_req = xmlcrypto.xpath(doc, "//*[local-name(.)='AuthnRequest']")
-  maybe_req = maybe_req && maybe_req[0]
-  maybe_resp = xmlcrypto.xpath(doc, "//*[local-name(.)='Response']")
-  maybe_resp = maybe_resp && maybe_resp[0]
-  maybe_assert = xmlcrypto.xpath(doc, "//*[local-name(.)='Assertion']")
-  maybe_assert = maybe_assert && maybe_assert[0]
-  to_check = maybe_req || maybe_resp || maybe_assert
-  signature = xmlcrypto.xpath(to_check, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
+  # Call documentElement to explicitly start from the root element of the document.
+  signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
-  sig.loadSignature signature[0].toString()
+  sig.loadSignature signature[0]
   valid = sig.checkSignature xml
   if valid
     return get_signed_data(doc, sig)
@@ -501,24 +491,19 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       return cb_wf null, decrypted_assertion
     (validated_assertion, cb_wf) ->
       # Populate attributes
-      session_info = get_session_info validated_assertion, require_session_index
-      user.name_id = get_name_id validated_assertion
-      user.session_index = session_info.index
-      if session_info.not_on_or_after?
-        user.session_not_on_or_after = session_info.not_on_or_after
+      try
+        session_info = get_session_info validated_assertion, require_session_index
+        user.name_id = get_name_id validated_assertion
+        user.session_index = session_info.index
+        if session_info.not_on_or_after?
+          user.session_not_on_or_after = session_info.not_on_or_after
 
-      assertion_attributes = parse_assertion_attributes validated_assertion
-      user = _.extend user, pretty_assertion_attributes(assertion_attributes)
-      user = _.extend user, attributes: assertion_attributes
-
-      if idp_entity_id
-        issuer = validated_assertion.getElementsByTagNameNS(XMLNS.SAML, 'Issuer')
-        if issuer.length < 1
-          return cb_wf new Error("Assertion in the SAML Response did not have a required Issuer")
-        if issuer[0].textContent != idp_entity_id
-          return cb_wf new Error("Issuer in the Assertion in the SAML Response is wrong")
-
-      cb_wf null, { user }
+        assertion_attributes = parse_assertion_attributes validated_assertion
+        user = _.extend user, pretty_assertion_attributes(assertion_attributes)
+        user = _.extend user, attributes: assertion_attributes
+        cb_wf null, { user }
+      catch err
+        return cb_wf err
   ], cb
 
 parse_logout_request = (dom) ->

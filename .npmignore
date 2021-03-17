@@ -1,5 +1,5 @@
 *~
+coverage
 node_modules
-lib-js-cov
 lib
 *.html

@@ -4,7 +4,7 @@ async         = require 'async'
 zlib          = require 'zlib'
 crypto        = require 'crypto'
 fs            = require 'fs'
-saml2         = require "#{__dirname}/../index"
+saml2         = require "#{__dirname}/../lib/saml2"
 url           = require 'url'
 util          = require 'util'
 xmldom        = require 'xmldom'
@@ -51,7 +51,7 @@ describe 'saml2', ->
         authn_request = dom.getElementsByTagName('AuthnRequest')[0]
 
         requested_authn_context = authn_request.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:protocol', 'RequestedAuthnContext')[0]
-        assert _(requested_authn_context.attributes).some (attr) -> attr.name is 'Comparison' and attr.value is 'exact'
+        assert _(requested_authn_context.attributes).some((attr) -> attr.name is 'Comparison' and attr.value is 'exact'), "Could not determine if specified attribute had proper value (Comparison=exact)"
         assert.equal requested_authn_context.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:assertion', 'AuthnContextClassRef')[0].firstChild.data, 'context:class'
 
 
@@ -135,6 +135,13 @@ describe 'saml2', ->
           has_attribute logout_service, 'Location', 'https://sp.example.com/assert',
           "Expected to find an SingleLogoutService with location 'htps://sp.example.com/assert'")
 
+      it 'contains only one SPSSODescriptor', ->
+        sp_sso_descriptor = entity_descriptor.getElementsByTagNameNS(
+          'urn:oasis:names:tc:SAML:2.0:metadata', 'SPSSODescriptor')
+
+        assert.equal(
+          sp_sso_descriptor.length, 1, "Expected 1 SP SSO descriptor; found #{sp_sso_descriptor.length}")
+
     describe 'format_pem', ->
       it 'formats an unformatted private key', ->
         raw_private_key = (/-----BEGIN PRIVATE KEY-----([^-]*)-----END PRIVATE KEY-----/g.exec get_test_file("test.pem"))[1]
@@ -186,6 +193,10 @@ describe 'saml2', ->
 
       it 'validates a Response signature when a signature also exists within the Assertion', ->
         assert.notEqual null, saml2.check_saml_signature(get_test_file("good_response_twice_signed.xml"), get_test_file("test.crt"))
+
+      it 'validates a Response signature when the dsig namespace is declared at the root level', ->
+        result = saml2.check_saml_signature(get_test_file("good_response_twice_signed_dsig_ns_at_top.xml"), get_test_file("test.crt"))
+        assert.notEqual null, result
 
     describe 'check_status_success', =>
       it 'accepts a valid success status', =>
@@ -552,7 +563,36 @@ describe 'saml2', ->
         assert.deepEqual response, expected_response
         done()
 
-    it 'correctly parses an AuthnStatement with no session_index', (done) ->
+    it 'returns an error when there is no Subject', (done) ->
+      # This test is validating existing behavior from v2.0.3 and prior. Per
+      #  the SAML2 spec, Subject is actually optional
+      sp_options =
+        entity_id: 'https://sp.example.com/metadata.xml'
+        private_key: get_test_file('test2.pem')
+        alt_private_keys: get_test_file('test.pem')
+        certificate: get_test_file('test2.crt')
+        alt_certs: get_test_file('test.crt')
+        assert_endpoint: 'https://sp.example.com/assert'
+      idp_options =
+        sso_login_url: 'https://idp.example.com/login'
+        sso_logout_url:  'https://idp.example.com/logout'
+        certificates: [ get_test_file('test.crt'), get_test_file('test2.crt') ]
+      request_options =
+        ignore_signature: true
+        allow_unencrypted_assertion: true
+        ignore_timing: true
+        request_body:
+          SAMLResponse: new Buffer(get_test_file("no_subject.xml")).toString('base64')
+
+      sp = new saml2.ServiceProvider sp_options
+      idp = new saml2.IdentityProvider idp_options
+
+      sp.post_assert idp, request_options, (err, response) ->
+        assert (err instanceof Error), "Did not get expected error."
+        assert.equal("Expected 1 Subject; found 0", err.message, "Unexpected error message:" + err.message)
+        done()
+
+    describe 'when AuthnStatement has no session_index', ->
       sp_options =
         entity_id: 'https://sp.example.com/metadata.xml'
         private_key: get_test_file('test2.pem')
@@ -575,23 +615,30 @@ describe 'saml2', ->
       sp = new saml2.ServiceProvider sp_options
       idp = new saml2.IdentityProvider idp_options
 
-      sp.post_assert idp, request_options, (err, response) ->
-        assert not err?, "Got error: #{err}"
-        expected_response =
-          response_header:
-            version: '2.0'
-            id: '_2'
-            in_response_to: '_1'
-            destination: 'https://sp.example.com/assert'
-          type: 'authn_response'
-          user:
-            name_id: undefined
-            session_index: null
-            session_not_on_or_after: '2016-02-11T21:12:09Z'
-            attributes: {}
+      it 'correctly parses an AuthnStatement when require_session_index is false', (done) ->
+        sp.post_assert idp, request_options, (err, response) ->
+          assert not err?, "Got error: #{err}"
+          expected_response =
+            response_header:
+              version: '2.0'
+              id: '_2'
+              in_response_to: '_1'
+              destination: 'https://sp.example.com/assert'
+            type: 'authn_response'
+            user:
+              name_id: undefined
+              session_index: null
+              session_not_on_or_after: '2016-02-11T21:12:09Z'
+              attributes: {}
 
-        assert.deepEqual response, expected_response
-        done()
+          assert.deepEqual response, expected_response
+          done()
+
+      it 'returns an error when require_session_index is true', (done) ->
+        sp.post_assert idp, _.extend({}, request_options, {require_session_index: true}), (err, response) ->
+          assert (err instanceof Error), "Did not get expected error."
+          assert.equal("SessionIndex not an attribute of AuthnStatement.", err.message, "Unexpected error message:" + err.message)
+          done()
 
     it 'rejects an assertion with an NotBefore condition in the future', (done) ->
       sp_options =
