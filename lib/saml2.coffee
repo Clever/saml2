@@ -354,8 +354,8 @@ parse_assertion_attributes = (dom) ->
     attribute_name = get_attribute_value attribute, 'Name'
     throw new Error("Invalid attribute without name") unless attribute_name?
     attribute_values = attribute.getElementsByTagNameNS(XMLNS.SAML, 'AttributeValue')
-    assertion_attributes[attribute_name] = _(attribute_values).map (attribute_value) ->
-      attribute_value.childNodes[0]?.data or ''
+    assertion_attributes[attribute_name] = _.map(attribute_values, (attribute_value) ->
+      attribute_value.childNodes[0]?.data or '')
   assertion_attributes
 
 # Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed
@@ -382,8 +382,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid": "primary_sid"
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname": "windows_account_name"
 
-  _(assertion_attributes)
-    .chain()
+  _.chain(assertion_attributes)
     .pairs()
     .filter(([k, v]) -> (claim_map[k]? and v.length > 0))
     .map(([k, v]) -> [claim_map[k], v[0]])
@@ -541,7 +540,7 @@ module.exports.ServiceProvider =
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
-      @shared_options = _(options).pick(
+      @shared_options = _.pick(options,
         "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew")
 
     # Returns:
@@ -563,7 +562,7 @@ module.exports.ServiceProvider =
           return cb ex
         delete uri.search # If you provide search and query search overrides query :/
         if options.sign_get_request
-          _(uri.query).extend sign_request(deflated.toString('base64'), @private_key, options.relay_state)
+          _.extend(uri.query, sign_request(deflated.toString('base64'), @private_key, options.relay_state))
         else
           uri.query.SAMLRequest = deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
