@@ -229,10 +229,7 @@ var saml2 = require('saml2-js');
 var fs = require('fs');
 var express = require('express');
 var app = express();
-var bodyParser = require('body-parser');
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
+app.use(express.urlencoded());
 
 // Create service provider
 var sp_options = {
