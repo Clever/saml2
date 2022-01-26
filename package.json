@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "main": "index.js",
   "engines": {
-    "node": ">=10.x"
+    "node": ">=12"
   },
   "scripts": {
     "build": "coffee --bare -c -o lib-js lib",
@@ -14,10 +14,7 @@
     "test-cov": "NODE_ENV=test nyc --extension .coffee -r html -r text mocha --require coffee-script/register test/*.coffee",
     "prepare": "npm run build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/Clever/saml2.git"
-  },
+  "repository": "github:kiln/saml2",
   "keywords": [
     "saml",
     "node"
