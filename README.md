@@ -1,6 +1,6 @@
 # SAML2-js
 
-[![Build Status](https://ci.ops.clever.com/api/badge/github.com/Clever/saml2/status.svg?branch=master)](https://ci.ops.clever.com/github.com/Clever/saml2)
+[![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
 
 `saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
 
@@ -26,9 +26,11 @@ This library exports two constructors.
 - [`IdentityProvider`](#IdentityProvider) - Represents an online service that authenticates users in the SAML flow.
 
 <a name="note_options" />
+
 **Note:**  Some options can be set on the [SP](#ServiceProvider), [IdP](#IdentityProvider), and/or on a per-method basis. For the options that are set in multiple places, they are overridden in the following order: per-method basis *overrides* [IdP](#IdentityProvider) which *overrides* [SP](#ServiceProvider).
 
 <a name="ServiceProvider" />
+
 ### ServiceProvider(options)
 Represents a service provider that relies on a trusted [`IdentityProvider`](#IdentityProvider) for authentication and authorization in the SAML flow.
 
@@ -41,6 +43,8 @@ An object that can contain the below options.  All options are strings, unless s
 - `assert_endpoint` - **Required** - URL of service provider assert endpoint.
 - `alt_private_keys` - (Array of PEM format strings) - Additional private keys to use when attempting to decrypt responses. Useful for adding backward-compatibility for old certificates after a rollover.
 - `alt_certs` - (Array of PEM format strings) - Additional certificates to expose in the SAML metadata. Useful for staging new certificates for rollovers.
+- `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
+- `notbefore_skew` - (Number) – To account for clock skew between IdP and SP, accept responses with a NotBefore condition ahead of the current time (according to our clock) by this number of seconds. Defaults to 1. Set it to 0 for optimum security but no tolerance for clock skew.
 - `force_authn` - (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `auth_context` - Specifies `AuthnContextClassRef`.  This can also be configured on a per-method basis.
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
@@ -82,6 +86,7 @@ An object that can contain the below options.  All options are strings, unless s
 #### Service provider function definitions
 
 <a name="create_login_request_url" />
+
 ##### create_login_request_url(IdP, options, cb)
 Get a URL to initiate a login.
 
@@ -97,6 +102,7 @@ Takes the following arguments:
 
 
 <a name="redirect_assert" />
+
 ##### redirect_assert(IdP, options, cb)
 Gets a SAML response object if the login attempt is valid, used for redirect binding.
 
@@ -125,6 +131,7 @@ Example of the SAML assert response returned:
   ```
 
 <a name="post_assert" />
+
 ##### post_assert(IdP, options, cb)
 Gets a SAML response object if the login attempt is valid, used for post binding.
 
@@ -134,10 +141,13 @@ Takes the following arguments:
   - `request_body` - (Object) - An object containing the parsed query string parameters.  This object should contain the value for either a `SAMLResponse` or `SAMLRequest`.
   - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
   - `require_session_index` - (Boolean) - If false, allow the assertion to be valid without a `SessionIndex` attribute on the `AuthnStatement` node.
+  - `audience` - (String or RegExp) — If set, at least one of the `<Audience>` values within the `<AudienceRestriction>` condition of a SAML authentication response must match. Defaults to `entity_id`.
+  - `notbefore_skew` - (Number) – To account for clock skew between IdP and SP, accept responses with a NotBefore condition ahead of the current time (according to our clock) by this number of seconds. Defaults to 1. Set it to 0 for optimum security but no tolerance for clock skew.
 - `cb(error, response)` - Callback called with the [request response](#assert_response).
 
 
 <a name="create_logout_request_url" />
+
 ##### create_logout_request_url(IdP, options, cb)
 Creates a SAML Request URL to initiate a user logout.
 
@@ -153,6 +163,7 @@ Takes the following arguments:
 
 
 <a name="create_logout_response_url" />
+
 ##### create_logout_response_url(IdP, options, cb)
 Creates a SAML Response URL to confirm a successful [IdP](#IdentityProvider) initiated logout.
 
@@ -165,10 +176,12 @@ Takes the following arguments:
 - `cb(error, response_url)` - Callback called with the logout response url.
 
 <a name="create_metadata" />
+
 ##### create_metadata()
 Returns the XML metadata used during the initial SAML configuration.
 
 <a name="IdentityProvider" />
+
 ### IdentityProvider(options)
 Represents an online service that authenticates users in the SAML flow.
 
@@ -216,6 +229,10 @@ var saml2 = require('saml2-js');
 var fs = require('fs');
 var express = require('express');
 var app = express();
+var bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
 // Create service provider
 var sp_options = {

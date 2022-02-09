@@ -1,16 +1,18 @@
 {
   "name": "saml2-js",
-  "version": "1.11.1",
+  "version": "3.0.1",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
+  "license": "Apache-2.0",
   "main": "index.js",
   "engines": {
-    "node": ">=0.10.x"
+    "node": ">=10.x"
   },
   "scripts": {
-    "test": "make -Br test",
-    "test-cov": "make -Br test-cov",
-    "prepublish": "make build"
+    "build": "coffee --bare -c -o lib-js lib",
+    "test": "NODE_ENV=test mocha --require coffee-script/register test/*.coffee",
+    "test-cov": "NODE_ENV=test nyc --extension .coffee -r html -r text mocha --require coffee-script/register test/*.coffee",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -24,17 +26,18 @@
     "url": "https://github.com/sylido/saml2/issues"
   },
   "devDependencies": {
-    "mocha": "~1.17.1",
-    "coffee-script": "^1.12.6"
+    "coffee-script": "^1.12.6",
+    "mocha": "^8.2.0",
+    "nyc": "^15.0.0"
   },
   "dependencies": {
-    "async": "~1.5.2",
-    "debug": "^2.6.x",
-    "underscore": "~1.8.3",
-    "xml-crypto": "^0.10.1",
-    "xml-encryption": "^0.11.0",
-    "xml2js": "~0.4.1",
-    "xmlbuilder": "~2.1.0",
-    "xmldom": "~0.1.19"
+    "async": "^3.2.0",
+    "debug": "^4.3.0",
+    "underscore": "^1.8.3",
+    "xml-crypto": "^2.0.0",
+    "xml-encryption": "^1.2.1",
+    "xml2js": "^0.4.0",
+    "xmlbuilder2": "^2.4.0",
+    "xmldom": "^0.4.0"
   }
 }
