@@ -1,6 +1,6 @@
 {
   "name": "@pazy/saml2-js",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "SAML 2.0 node helpers with updated dependencies",
   "author": "Clever",
   "license": "Apache-2.0",
