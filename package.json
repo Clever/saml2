@@ -1,7 +1,7 @@
 {
-  "name": "saml2-js",
-  "version": "3.0.1",
-  "description": "SAML 2.0 node helpers",
+  "name": "@pazy/saml2-js",
+  "version": "3.0.2",
+  "description": "SAML 2.0 node helpers with updated dependencies",
   "author": "Clever",
   "license": "Apache-2.0",
   "main": "index.js",
@@ -16,14 +16,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Clever/saml2.git"
+    "url": "https://github.com/zygmuntowskipawel/saml2"
   },
   "keywords": [
     "saml",
     "node"
   ],
   "bugs": {
-    "url": "https://github.com/Clever/saml2/issues"
+    "url": "https://github.com/zygmuntowskipawel/saml2/issues"
   },
   "devDependencies": {
     "coffee-script": "^1.12.0",
