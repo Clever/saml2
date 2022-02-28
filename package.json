@@ -26,6 +26,7 @@
     "url": "https://github.com/zygmuntowskipawel/saml2/issues"
   },
   "devDependencies": {
+    "@types/saml2-js": "^3.0.0",
     "coffee-script": "^1.12.0",
     "mocha": "^9.2.1",
     "nyc": "^15.0.0"
@@ -39,5 +40,6 @@
     "xml2js": "^0.4.0",
     "xmlbuilder2": "^2.4.0",
     "xmldom": "^0.6.0"
-  }
+  },
+  "types": "./node_modules/@types/saml2-js/index.d.ts"
 }
