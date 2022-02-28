@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "coffee-script": "^1.12.0",
-    "mocha": "^8.2.0",
+    "mocha": "^9.2.1",
     "nyc": "^15.0.0"
   },
   "dependencies": {
@@ -35,9 +35,9 @@
     "debug": "^4.3.0",
     "underscore": "^1.8.0",
     "xml-crypto": "^2.0.0",
-    "xml-encryption": "^1.2.1",
+    "xml-encryption": "^2.0.0",
     "xml2js": "^0.4.0",
     "xmlbuilder2": "^2.4.0",
-    "xmldom": "^0.4.0"
+    "xmldom": "^0.6.0"
   }
 }
