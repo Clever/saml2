@@ -1,8 +1,10 @@
 # SAML2-js
 
-[![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
-
 `saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
+
+## The reason for fork
+
+The upstream looks like abandoned and had high level vulnerabilities https://github.com/Clever/saml2/pull/252.
 
 ## Usage
 
