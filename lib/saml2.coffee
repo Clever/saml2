@@ -252,7 +252,7 @@ check_saml_signature = (_xml, certificate) ->
   sig = new xmlcrypto.SignedXml()
   sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0]
-  valid = sig.checkSignature xml
+  valid = sig.checkSignature _xml
   if valid
     return get_signed_data(doc, sig)
   else
