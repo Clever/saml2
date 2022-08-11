@@ -1,6 +1,17 @@
-# SAML2-js
+# darioackermann/saml2-js
 
-[![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
+## Important 
+
+⚠️⚠️⚠️ **This repo is in security maintenance only** ⚠️⚠️⚠️
+
+The original author seems to have no more time to maintain the library.
+This fork tries to apply version updates in order to fix (critical vulnerabilities).
+
+
+
+---
+
+
 
 `saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
 
@@ -9,7 +20,7 @@
 Install with [npm](https://www.npmjs.com/).
 
 ```bash
-  npm install saml2-js --save
+  npm install darioackermann/saml2-js --save
 ```
 
 Include the SAML library.
