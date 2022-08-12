@@ -26,7 +26,7 @@ Install with [npm](https://www.npmjs.com/).
 Include the SAML library.
 
 ```javascript
-  var saml2 = require('saml2-js');
+  var saml2 = require('@darioackermann/saml2-js');
 ```
 
 ## Documentation
