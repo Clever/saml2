@@ -1,8 +1,8 @@
 {
   "name": "@darioackermann/saml2-js",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "SAML 2.0 node helpers",
-  "author": darioackermann",
+  "author": "darioackermann",
   "license": "Apache-2.0",
   "main": "index.js",
   "engines": {

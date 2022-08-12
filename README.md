@@ -1,4 +1,4 @@
-# darioackermann/saml2-js
+# @darioackermann/saml2-js
 
 ## Important 
 
@@ -20,7 +20,7 @@ This fork tries to apply version updates in order to fix (critical vulnerabiliti
 Install with [npm](https://www.npmjs.com/).
 
 ```bash
-  npm install darioackermann/saml2-js --save
+  npm install @darioackermann/saml2-js --save
 ```
 
 Include the SAML library.
