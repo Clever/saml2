@@ -28,13 +28,13 @@
     "nyc": "^15.1.0"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.3",
     "async": "^3.2.0",
     "debug": "^4.3.0",
     "underscore": "^1.8.0",
     "xml-crypto": "^2.0.0",
-    "xml-encryption": "^2.0.0",
+    "xml-encryption": "^1.2.4",
     "xml2js": "^0.4.0",
-    "xmlbuilder2": "^2.4.0",
-    "@xmldom/xmldom": "^0.7.0"
+    "xmlbuilder2": "^2.4.0"
   }
 }
