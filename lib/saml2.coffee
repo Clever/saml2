@@ -7,7 +7,7 @@ url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder2'
 xmlcrypto     = require 'xml-crypto'
-xmldom        = require 'xmldom'
+xmldom        = require '@xmldom/xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 SignedXml     = require('xml-crypto').SignedXml
@@ -239,10 +239,7 @@ decrypt_assertion = (dom, private_keys, cb) ->
 # This checks the signature of a saml document and returns either array containing the signed data if valid, or null
 # if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
 # verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
-check_saml_signature = (_xml, certificate) ->
-  # xml-crypto requires that whitespace is normalized as such:
-  # https://github.com/yaronn/xml-crypto/commit/17f75c538674c0afe29e766b058004ad23bd5136#diff-5dfe38baf287dcf756a17c2dd63483781b53bf4b669e10efdd01e74bcd8e780aL69
-  xml = _xml.replace(/\r\n?/g, '\n')
+check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
