@@ -38,7 +38,7 @@ jobs:
           root: ~/Clever
           paths: ["."]
 
-  build-and-test:
+  test:
     parameters:
       node-version:
         type: string
@@ -64,10 +64,12 @@ workflows:
   version: 2
   build_test_publish:
     jobs:
-      - build-and-test:
+      - build
+      - test:
           matrix:
             parameters:
               node-version: ["10", "12", "14", "16", "18", "latest"]
       - publish:
           requires:
-            - build-and-test
+            - build
+            - test
