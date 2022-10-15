@@ -1,23 +1,108 @@
-version: 2
-jobs:
-  build:
+version: 2.1
+
+references:
+  defaults: &defaults
     working_directory: ~/Clever/saml2
-    docker:
-    - image: circleci/node:12-stretch
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+
+  test-settings: &test-settings
     steps:
-    - run:
-        command: cd $HOME && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
-        name: Clone ci-scripts
-    - checkout
-    - setup_remote_docker
-    - run:
-        command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-        name: Set up CircleCI artifacts directories
-    - run:
-        command: npm install
-        name: npm install
-    - run: npm test
-    - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
+      - attach_workspace:
+          at: ~/Clever
+      - run: npm run test
+
+executors:
+  # TODO: Pull the latest major.minor version.
+  node-v10:
+    <<: *defaults
+    docker:
+      - image: cimg/node:10.24
+  node-v12:
+    <<: *defaults
+    docker:
+      - image: cimg/node:12.22
+  node-v14:
+    <<: *defaults
+    docker:
+      - image: cimg/node:14.20
+  node-v16:
+    <<: *defaults
+    docker:
+      - image: cimg/node:16.18
+  node-v18:
+    <<: *defaults
+    docker:
+      - image: cimg/node:18.10
+
+commands:
+  clone-ci-scripts:
+    description: Clone the ci-scripts repo
+    steps:
+      - run:
+          name: Clone ci-scripts
+          command: cd .. && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
+
+jobs:
+  build:
+    executor: node-v12
+    steps:
+      - checkout
+      - run: npm install
+      - persist_to_workspace:
+          root: ~/Clever
+          paths: ["."]
+
+  test-v10:
+    <<: *test-settings
+    executor: node-v10
+
+  test-v12:
+    <<: *test-settings
+    executor: node-v12
+
+  test-v14:
+    <<: *test-settings
+    executor: node-v14
+
+  test-v16:
+    <<: *test-settings
+    executor: node-v16
+
+  test-v18:
+    <<: *test-settings
+    executor: node-v18
+
+  publish:
+    executor: node-v12
+    steps:
+      - attach_workspace:
+          at: ~/Clever
+      - clone-ci-scripts
+      - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
+
+workflows:
+  version: 2
+  build_test_publish_deploy:
+    jobs:
+      - build
+      - test-v10:
+          requires:
+            - build
+      - test-v12:
+          requires:
+            - build
+      - test-v14:
+          requires:
+            - build
+      - test-v16:
+          requires:
+            - build
+      - test-v18:
+          requires:
+            - build
+      - publish:
+          requires:
+            - build
+            - test-v12
