@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
 
-`saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
+`saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface. It achieves this this by helping you implement a service provider for the SAML protocol. It currently does not implement the features to act as an identity provider.
 
 ## Usage
 
