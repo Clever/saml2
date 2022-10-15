@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "coffeescript": "^1.12.7",
-    "mocha": "^8.2.0",
+    "mocha": "^8.4.0",
     "nyc": "^15.0.0"
   },
   "dependencies": {
