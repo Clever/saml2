@@ -47,7 +47,9 @@ jobs:
       - checkout
       - node/install:
           node-version: << parameters.node-version >>
-      - node/install-packages
+      - node/install-packages:
+          with-cache: false
+          override-ci-command: npm install
       - run: npm run test
 
   publish:
@@ -60,7 +62,7 @@ jobs:
 
 workflows:
   version: 2
-  build_test_publish_deploy:
+  build_test_publish:
     jobs:
       - build-and-test:
           matrix:
