@@ -7,34 +7,18 @@ references:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
 
-  test-settings: &test-settings
-    steps:
-      - attach_workspace:
-          at: ~/Clever
-      - run: npm run test
+orbs:
+  node: circleci/node@5.0.3
 
 executors:
-  # TODO: Pull the latest major.minor version.
-  node-v10:
+  tester:
     <<: *defaults
     docker:
-      - image: cimg/node:10.24
+      - image: cimg/base:stable
   node-v12:
     <<: *defaults
     docker:
       - image: cimg/node:12.22
-  node-v14:
-    <<: *defaults
-    docker:
-      - image: cimg/node:14.20
-  node-v16:
-    <<: *defaults
-    docker:
-      - image: cimg/node:16.18
-  node-v18:
-    <<: *defaults
-    docker:
-      - image: cimg/node:18.10
 
 commands:
   clone-ci-scripts:
@@ -54,25 +38,19 @@ jobs:
           root: ~/Clever
           paths: ["."]
 
-  test-v10:
-    <<: *test-settings
-    executor: node-v10
-
-  test-v12:
-    <<: *test-settings
-    executor: node-v12
-
-  test-v14:
-    <<: *test-settings
-    executor: node-v14
-
-  test-v16:
-    <<: *test-settings
-    executor: node-v16
-
-  test-v18:
-    <<: *test-settings
-    executor: node-v18
+  build-and-test:
+    parameters:
+      node-version:
+        type: string
+    executor: tester
+    steps:
+      - checkout
+      - node/install:
+          node-version: << parameters.node-version >>
+      - node/install-packages:
+          with-cache: false
+          override-ci-command: npm install
+      - run: npm run test
 
   publish:
     executor: node-v12
@@ -84,25 +62,12 @@ jobs:
 
 workflows:
   version: 2
-  build_test_publish_deploy:
+  build_test_publish:
     jobs:
-      - build
-      - test-v10:
-          requires:
-            - build
-      - test-v12:
-          requires:
-            - build
-      - test-v14:
-          requires:
-            - build
-      - test-v16:
-          requires:
-            - build
-      - test-v18:
-          requires:
-            - build
+      - build-and-test:
+          matrix:
+            parameters:
+              node-version: ["10", "12", "14", "16", "18", "latest"]
       - publish:
           requires:
-            - build
-            - test-v12
+            - build-and-test
