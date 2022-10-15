@@ -1,3 +1,9 @@
+# Maintenance Notice
+
+This library is currently in maintenance mode. Until further notice, the primary directive is to handle bug reports and security issues with this library.
+
+Any library alternatives and suggestions can be filed under an issue.
+
 # SAML2-js
 
 [![CircleCI](https://circleci.com/gh/Clever/saml2/tree/master.svg?style=svg)](https://circleci.com/gh/Clever/saml2/tree/master)
