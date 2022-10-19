@@ -381,6 +381,7 @@ parse_assertion_attributes = (dom) ->
 # into nicer names. Attributes that are not expected are ignored, and attributes with more than one value with have
 # all values except the first one dropped.
 pretty_assertion_attributes = (assertion_attributes) ->
+  console.log "pretty assertions"
   claim_map =
     "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"              : "email"
     "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"                 : "given_name"
