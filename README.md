@@ -1,32 +1,27 @@
-# @darioackermann/saml2-js
+# Maintenance Notice
+
+This library is currently in maintenance mode. Until further notice, the primary directive is to handle bug reports and security issues with this library.
+
+Any library alternatives and suggestions can be filed under an issue.
+
+# SAML2-js
 
 ## Important 
 
-⚠️⚠️⚠️ **This repo is in security maintenance only** ⚠️⚠️⚠️
-
-The original author seems to have no more time to maintain the library.
-This fork tries to apply version updates in order to fix (critical vulnerabilities).
-
-
-
----
-
-
-
-`saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface.
+`saml2-js` is a node module that abstracts away the complexities of the SAML protocol behind an easy to use interface. It achieves this this by helping you implement a service provider for the SAML protocol. It currently does not implement the features to act as an identity provider.
 
 ## Usage
 
 Install with [npm](https://www.npmjs.com/).
 
 ```bash
-  npm install @darioackermann/saml2-js --save
+  npm install saml2-js --save
 ```
 
 Include the SAML library.
 
 ```javascript
-  var saml2 = require('@darioackermann/saml2-js');
+  var saml2 = require('saml2-js');
 ```
 
 ## Documentation
@@ -240,10 +235,12 @@ var saml2 = require('saml2-js');
 var fs = require('fs');
 var express = require('express');
 var app = express();
-var bodyParser = require('body-parser');
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
+// If you're using express <4.0:
+// var bodyParser = require('body-parser');
+// app.use(bodyParser.urlencoded({
+//   extended: true
+// }));
+app.use(express.urlencoded());
 
 // Create service provider
 var sp_options = {
@@ -279,6 +276,9 @@ app.get("/login", function(req, res) {
   });
 });
 
+// Variables used in login/logout process
+var name_id, session_index;
+
 // Assert endpoint for when login completes
 app.post("/assert", function(req, res) {
   var options = {request_body: req.body};
@@ -291,7 +291,7 @@ app.post("/assert", function(req, res) {
     name_id = saml_response.user.name_id;
     session_index = saml_response.user.session_index;
 
-    res.send("Hello #{saml_response.user.name_id}!");
+    res.send("Hello #{name_id}! session_index: #{session_index}.");
   });
 });
 

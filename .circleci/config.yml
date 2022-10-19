@@ -1,23 +1,75 @@
-version: 2
-jobs:
-  build:
+version: 2.1
+
+references:
+  defaults: &defaults
     working_directory: ~/Clever/saml2
-    docker:
-    - image: circleci/node:12-stretch
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+
+orbs:
+  node: circleci/node@5.0.3
+
+executors:
+  tester:
+    <<: *defaults
+    docker:
+      - image: cimg/base:stable
+  node-v12:
+    <<: *defaults
+    docker:
+      - image: cimg/node:12.22
+
+commands:
+  clone-ci-scripts:
+    description: Clone the ci-scripts repo
     steps:
-    - run:
-        command: cd $HOME && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
-        name: Clone ci-scripts
-    - checkout
-    - setup_remote_docker
-    - run:
-        command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-        name: Set up CircleCI artifacts directories
-    - run:
-        command: npm install
-        name: npm install
-    - run: npm test
-    - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then $HOME/ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
+      - run:
+          name: Clone ci-scripts
+          command: cd .. && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
+
+jobs:
+  build:
+    executor: node-v12
+    steps:
+      - checkout
+      - run: npm install
+      - persist_to_workspace:
+          root: ~/Clever
+          paths: ["."]
+
+  test:
+    parameters:
+      node-version:
+        type: string
+    executor: tester
+    steps:
+      - checkout
+      - node/install:
+          node-version: << parameters.node-version >>
+      - node/install-packages:
+          with-cache: false
+          override-ci-command: npm install
+      - run: npm run test
+
+  publish:
+    executor: node-v12
+    steps:
+      - attach_workspace:
+          at: ~/Clever
+      - clone-ci-scripts
+      - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then ../ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
+
+workflows:
+  version: 2
+  build_test_publish:
+    jobs:
+      - build
+      - test:
+          matrix:
+            parameters:
+              node-version: ["10", "12", "14", "16", "18", "latest"]
+      - publish:
+          requires:
+            - build
+            - test
