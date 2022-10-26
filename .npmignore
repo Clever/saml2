@@ -2,6 +2,7 @@
 coverage
 node_modules
 lib
+test
 *.html
 .circleci/
 .github/
