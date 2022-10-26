@@ -380,7 +380,6 @@ parse_assertion_attributes = (dom) ->
 # into nicer names. Attributes that are not expected are ignored, and attributes with more than one value with have
 # all values except the first one dropped.
 pretty_assertion_attributes = (assertion_attributes) ->
-  # console.log "pretty assertions"
   claim_map =
     "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"              : "email"
     "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"                 : "given_name"
@@ -441,7 +440,7 @@ add_namespaces_to_child_assertions = (xml_string) ->
 # Takes a DOM of a saml_response, private keys with which to attempt decryption and the
 # certificate(s) of the identity provider that issued it and will return a user object containing
 # the attributes or an error if keys are incorrect or the response is invalid.
-parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, ignore_timing, notonorafter_required, notbefore_required, notbefore_skew, sp_audience, cb) ->
+parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_unencrypted, ignore_signature, require_session_index, ignore_timing, require_notonorafter, require_notbefore, require_onetimeuse, notbefore_skew, sp_audience, cb) ->
   user = {}
 
   # strip of possible enveloping xml tags:
@@ -451,7 +450,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
   if !ignore_signature
     for cert in idp_certificates or []
       signed_data_from_complete_saml_response = check_saml_signature(saml_response.toString(), cert)
-      if signed_data_from_complete_saml_response?.length is 1 and signed_data_from_complete_saml_response[0] == saml_response.toString()
+      if signed_data_from_complete_saml_response?.length is 1 and signed_data_from_complete_saml_response[0] is saml_response.toString()
         # parse reponse without checking for signatures anymore:
         return parse_authn_response(saml_response, sp_private_keys, idp_certificates, allow_unencrypted, true, require_session_index, cb)
 
@@ -460,7 +459,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
       # Decrypt the assertion
       decrypt_assertion saml_response, sp_private_keys, (err, result) ->
         return cb_wf null, result unless err?
-        return cb_wf err, result unless allow_unencrypted and err.message == "Expected 1 EncryptedAssertion; found 0."
+        return cb_wf err, result unless allow_unencrypted and err.message is "Expected 1 EncryptedAssertion; found 0."
         assertion = saml_response.getElementsByTagNameNS(XMLNS.SAML, "Assertion")
         unless assertion.length is 1
           return cb_wf new Error("Expected 1 Assertion or 1 EncryptedAssertion; found #{assertion.length}")
@@ -497,43 +496,44 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
     (decrypted_assertion, cb_wf) ->
       # Validate the assertion conditions
       conditions = decrypted_assertion.getElementsByTagNameNS(XMLNS.SAML, "Conditions")[0]
-      # console.log "conditions", conditions
-      # console.log "attributes raw", conditions.attributes
 
       if conditions?
-        if ignore_timing != true
+        if not ignore_timing
           attributes = _.map conditions.attributes, (v,k) ->
-            return {
-              name  : _.get(v, "name").toLowerCase()
-              value : _.get(v, "value")
-            }
+            name  : _.get(v, "name").toLowerCase()
+            value : _.get(v, "value")
+
 
           nooa = _.includes _.map(attributes, "name"), "notonorafter"
           nb   = _.includes _.map(attributes, "name"), "notbefore"
 
-          # console.log "attributes", attributes
+          # get all onetimeuse tags that are children of the conditions tag
+          # value should be stored somewhere in the future to be invalidated for a certain amount of time
+          otu  = _.size _.filter conditions.childNodes, (v,k) -> v.nodeName.toLowerCase() is "onetimeuse"
 
-          # console.log "notonorafter_required", notonorafter_required
-          # console.log "notbefore_required", notbefore_required
-          # console.log "nooa", nooa
-          # console.log "nb", nb
+          if require_onetimeuse
+            if otu is 0
+              return cb_wf new SAMLError("OneTimeUse element is missing from the Conditions, it's currently set to Required.")
 
-          if notonorafter_required && notbefore_required && (!nooa || !nb)
-            return cb_wf new SAMLError("NotOnOrAfter and NotBefore are missing from the Conditions, both are currently set to Required.")
+            if otu > 1
+              return cb_wf new SAMLError("Multiple OneTimeUse elements were found in the Conditions, only one is allowed.")
 
-          if notonorafter_required && !nooa
-            return cb_wf new SAMLError("NotOnOrAfter is missing from the Conditions, it's currently set to Required.")
+          if require_notonorafter and require_notbefore and (not nooa or not nb)
+            return cb_wf new SAMLError("NotOnOrAfter and NotBefore are missing from the Conditions attributes, both are currently set to Required.")
 
-          if notbefore_required && !nb
-            return cb_wf new SAMLError("NotBefore is missing from the Conditions, it's currently set to Required.")
+          if require_notonorafter and !nooa
+            return cb_wf new SAMLError("NotOnOrAfter is missing from the Conditions attributes, it's currently set to Required.")
+
+          if require_notbefore and !nb
+            return cb_wf new SAMLError("NotBefore is missing from the Conditions attributes, it's currently set to Required.")
 
           for attribute in attributes
             condition = attribute.name
 
-            if condition == "notbefore" and Date.parse(attribute.value) > Date.now() + (notbefore_skew * 1000)
+            if condition is "notbefore" and Date.parse(attribute.value) > Date.now() + (notbefore_skew * 1000)
               return cb_wf new SAMLError("SAML Response is not yet valid", { NotBefore : attribute.value })
 
-            if condition == "notonorafter" and Date.parse(attribute.value) <= Date.now()
+            if condition is "notonorafter" and Date.parse(attribute.value) <= Date.now()
               return cb_wf new SAMLError("SAML Response is no longer valid", { NotOnOrAfter : attribute.value })
 
         audience_restriction = conditions.getElementsByTagNameNS(XMLNS.SAML, "AudienceRestriction")[0]
@@ -544,16 +544,19 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
             audienceValue = audience.firstChild?.data?.trim()
             !_.isEmpty(audienceValue?.trim()) and (
               (_.isRegExp(sp_audience) and sp_audience.test(audienceValue)) or
-              (_.isString(sp_audience) and sp_audience.toLowerCase() == audienceValue.toLowerCase())
+              (_.isString(sp_audience) and sp_audience.toLowerCase() is audienceValue.toLowerCase())
             )
           if !validAudience?
             return cb_wf new SAMLError("SAML Response is not valid for this audience")
       else
-        if notonorafter_required && notbefore_required
+        if require_onetimeuse
+          return cb_wf new SAMLError("The Conditions tag is missing, but the OneTimeUse element is Required.")
+
+        if require_notonorafter and require_notbefore
           return cb_wf new SAMLError("The Conditions tag is missing, but the NotOnOrAfter and NotBefore attributes are Required.")
-        else if notonorafter_required
+        else if require_notonorafter
           return cb_wf new SAMLError("The Conditions tag is missing, but the NotOnOrAfter attribute is Required.")
-        else if notbefore_required
+        else if require_notbefore
           return cb_wf new SAMLError("The Conditions tag is missing, but the NotBefore attritube is Required.")
 
       return cb_wf null, decrypted_assertion
@@ -601,7 +604,7 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor : (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
+      { @entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs } = options
 
       options.audience       ?= @entity_id
       options.notbefore_skew ?= 1
@@ -654,8 +657,13 @@ module.exports.ServiceProvider =
     #   options
     #   cb
     redirect_assert : (identity_provider, options, cb) ->
-      options = _.defaults(_.extend(options, { get_request : true }), { require_session_index : true, notonorafter_required : false, notbefore_required : false })
+      options = _.defaults(
+                  _.extend(options, { get_request : true }),
+                  { require_session_index : true, require_notonorafter : false, require_notbefore : false, require_onetimeuse : false }
+                )
+
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
+
       @_assert identity_provider, options, cb
 
     # Returns:
@@ -665,8 +673,13 @@ module.exports.ServiceProvider =
     #   options
     #   cb
     post_assert : (identity_provider, options, cb) ->
-      options = _.defaults(_.extend(options, { get_request : false }), { require_session_index : true, notonorafter_required : false, notbefore_required : false })
+      options = _.defaults(
+                  _.extend(options, { get_request : false }),
+                  { require_session_index : true, require_notonorafter : false, require_notbefore : false, require_onetimeuse : false }
+                )
+
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
+
       @_assert identity_provider, options, cb
 
     # Private function, called by redirect and post assert to return a response to
@@ -679,7 +692,7 @@ module.exports.ServiceProvider =
         return setImmediate cb, new Error("Configuration error: `notbefore_skew` must be a number")
 
       saml_response = null
-      response = {}
+      response      = {}
 
       async.waterfall [
         (cb_wf) ->
@@ -688,6 +701,7 @@ module.exports.ServiceProvider =
           # Inflate response for redirect requests before parsing it.
           if (options.get_request)
             return zlib.inflateRaw raw, cb_wf
+
           setImmediate cb_wf, null, raw
 
         (response_buffer, cb_wf) =>
@@ -714,8 +728,9 @@ module.exports.ServiceProvider =
                 options.ignore_signature,
                 options.require_session_index,
                 options.ignore_timing,
-                options.notonorafter_required,
-                options.notbefore_required,
+                options.require_notonorafter,
+                options.require_notbefore,
+                options.require_onetimeuse,
                 options.notbefore_skew,
                 options.audience
                 cb_wf)
@@ -747,7 +762,7 @@ module.exports.ServiceProvider =
     create_logout_request_url : (identity_provider, options, cb) =>
       identity_provider = { sso_logout_url : identity_provider, options : {} } if _.isString(identity_provider)
       options           = set_option_defaults options, identity_provider.shared_options, @shared_options
-      {id, xml}         = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
+      { id, xml }       = create_logout_request @entity_id, options.name_id, options.session_index, identity_provider.sso_logout_url
 
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
@@ -802,9 +817,9 @@ module.exports.ServiceProvider =
 module.exports.IdentityProvider =
   class IdentityProvider
     constructor : (options) ->
-      {@sso_login_url, @sso_logout_url, @certificates} = options
-      @certificates                                    = [ @certificates ] unless _.isArray(@certificates)
-      @shared_options                                  = _.pick(options, "force_authn", "sign_get_request", "allow_unencrypted_assertion")
+      { @sso_login_url, @sso_logout_url, @certificates } = options
+      @certificates                                      = [ @certificates ] unless _.isArray(@certificates)
+      @shared_options                                    = _.pick(options, "force_authn", "sign_get_request", "allow_unencrypted_assertion")
 
 if process.env.NODE_ENV is "test"
   module.exports.create_authn_request               = create_authn_request

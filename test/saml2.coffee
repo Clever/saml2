@@ -996,7 +996,8 @@ describe 'saml2', ->
             assert !err?, 'Response was wrongly rejected'
             done()
 
-    describe 'required timing elements options testing', ->
+
+    describe 'Timing Attributes/Elements and their Corresponding require Options Tests', ->
       before ->
         @sp_options =
           entity_id               : 'https://sp.example.com/metadata.xml'
@@ -1015,237 +1016,435 @@ describe 'saml2', ->
         @sp  = new saml2.ServiceProvider @sp_options
         @idp = new saml2.IdentityProvider @idp_options
 
-      # ------------------- NotOnOrAfter tests ------------------------
+      describe 'NotOnOrAfter attribute is missing from the Conditons', ->
 
-      it 'no NotOnOrAfter attribute in the Conditions tag and require_notonorafter is true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notonorafter is true - returns an error', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notonorafter        : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("NotOnOrAfter is missing from the Conditions, it's currently set to Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            assert.equal("NotOnOrAfter is missing from the Conditions attributes, it's currently set to Required.", err.message,
+                         "Unexpected error message:" + err.message)
+            done()
 
-      it 'no NotOnOrAfter attribute in the Conditions tag and require_notonorafter is false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : false
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notonorafter is false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notonorafter        : false
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      it 'no NotOnOrAfter attribute in the Conditions tag and require_notonorafter is not set, defaults to false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notonorafter is not set, defaults to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      # ------------------- NotBefore tests ------------------------
+      describe 'NotBefore attribute is missing from the Conditons', ->
 
-      it 'no NotBefore attribute in the Conditions tag and require_notbefore is true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notbefore_required          : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notbefore is true - returns an error', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notbefore           : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("NotBefore is missing from the Conditions, it's currently set to Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            assert.equal("NotBefore is missing from the Conditions attributes, it's currently set to Required.", err.message,
+                         "Unexpected error message:" + err.message)
+            done()
 
-      it 'no NotBefore attribute in the Conditions tag and require_notbefore is false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notbefore_required          : false
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notbefore is false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notbefore           : false
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      it 'no NotBefore attribute in the Conditions tag and require_notbefore is not set, defaults to false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_notbefore is not set, defaults to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      # ------------------- NotBefore & NotOnOrAfter tests ------------------------
+      describe 'NotBefore and NotOnOrAfter attributes are missing from the Conditons', ->
 
-      it 'no NotBefore and NotOnOrAfter attributes in the Conditions tag, but both require_notbefore,require_notonorafter are true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : true
-          notbefore_required          : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'both require_notbefore/require_notonorafter are true - returns an error', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notonorafter        : true
+            require_notbefore           : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("NotOnOrAfter and NotBefore are missing from the Conditions, both are currently set to Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            assert.equal("NotOnOrAfter and NotBefore are missing from the Conditions attributes, both are currently set to Required.", err.message,
+                         "Unexpected error message:" + err.message)
+            done()
 
-      it 'no NotBefore and NotOnOrAfter attributes in the Conditions tag, but both require_notbefore,require_notonorafter are false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : false
-          notbefore_required          : false
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'both require_notbefore/require_notonorafter are false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_notonorafter        : false
+            require_notbefore           : false
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      it 'no NotBefore and NotOnOrAfter attributes in the Conditions tag, but both require_notbefore,require_notonorafter are not set, default to false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'both require_notbefore/require_notonorafter are not set, default to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_notbefore_and_notonorafter.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      # ------------------- No Conditions -> NotBefore/NotOnOrAfter tests ------------------------
+      describe 'OneTimeUse element is missing from the Conditions', ->
 
-      it 'no Conditions tag, but both require_notbefore,require_notonorafter are true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : true
-          notbefore_required          : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_onetimeuse is true - returns an error', (done) ->
+          saml_response        = get_test_file("good_assertion_no_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("The Conditions tag is missing, but the NotOnOrAfter and NotBefore attributes are Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            assert.equal("OneTimeUse element is missing from the Conditions, it's currently set to Required.", err.message,
+                         "Unexpected error message:" + err.message)
+            done()
 
-      it 'no Conditions tag, but require_notonorafter is true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_onetimeuse is false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : false
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("The Conditions tag is missing, but the NotOnOrAfter attribute is Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      it 'no Conditions tag, but require_notbefore is true - returns an error', (done) ->
-        saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notbefore_required          : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+        it 'require_onetimeuse is not set, defaults to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_no_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          assert.equal("The Conditions tag is missing, but the NotBefore attritube is Required.", err.message,
-                       "Unexpected error message:" + err.message)
-          done()
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-      it 'no Conditions tag, but both require_notbefore,require_notonorafter are false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          notonorafter_required       : false
-          notbefore_required          : false
-          request_body                :
-            SAMLResponse : saml_response_base64
+      describe '1 OneTimeUse element in the Conditions', ->
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+        it 'require_onetimeuse is true - success', (done) ->
+          saml_response        = get_test_file("good_assertion_with_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : true
+            request_body                :
+              SAMLResponse : saml_response_base64
 
-      it 'no Conditions tag, but both require_notbefore,require_notonorafter are not set, default to false - no error returned', (done) ->
-        saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
-        saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
-        request_options      =
-          require_session_index       : false
-          ignore_signature            : true
-          allow_unencrypted_assertion : true
-          request_body                :
-            SAMLResponse : saml_response_base64
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
 
-        @sp.post_assert @idp, request_options, (err, response) ->
-          console.error "error received",err if err?
-          assert !err?, 'Response was wrongly rejected'
-          done()
+        it 'require_onetimeuse is false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_with_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : false
+            request_body                :
+              SAMLResponse : saml_response_base64
+
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+        it 'require_onetimeuse is not set, defaults to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_with_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
+
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+      describe '> 1 OneTimeUse elements in the Conditions', ->
+
+        it 'require_onetimeuse is true - returns an error', (done) ->
+          saml_response        = get_test_file("good_assertion_with_multiple_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : true
+            request_body                :
+              SAMLResponse : saml_response_base64
+
+          @sp.post_assert @idp, request_options, (err, response) ->
+            assert.equal("Multiple OneTimeUse elements were found in the Conditions, only one is allowed.", err.message,
+                         "Unexpected error message:" + err.message)
+            done()
+
+        it 'require_onetimeuse is false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_with_multiple_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            require_onetimeuse          : false
+            request_body                :
+              SAMLResponse : saml_response_base64
+
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+        it 'require_onetimeuse is not set, defaults to false - success', (done) ->
+          saml_response        = get_test_file("good_assertion_with_multiple_onetimeuse.xml")
+          saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+          request_options      =
+            require_session_index       : false
+            ignore_signature            : true
+            allow_unencrypted_assertion : true
+            request_body                :
+              SAMLResponse : saml_response_base64
+
+          @sp.post_assert @idp, request_options, (err, response) ->
+            console.error "error received",err if err?
+            assert !err?, 'Response was wrongly rejected'
+            done()
+
+      describe 'No Conditions Element', ->
+
+        describe "NotBefore and NotOnOrAfter Tests", ->
+
+          it 'both require_notbefore/require_notonorafter are true - returns an error', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_notonorafter        : true
+              require_notbefore           : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              assert.equal("The Conditions tag is missing, but the NotOnOrAfter and NotBefore attributes are Required.", err.message,
+                           "Unexpected error message:" + err.message)
+              done()
+
+          it 'require_notonorafter is true - returns an error', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_notonorafter        : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              assert.equal("The Conditions tag is missing, but the NotOnOrAfter attribute is Required.", err.message,
+                           "Unexpected error message:" + err.message)
+              done()
+
+          it 'require_notbefore is true - returns an error', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_notbefore           : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              assert.equal("The Conditions tag is missing, but the NotBefore attritube is Required.", err.message,
+                           "Unexpected error message:" + err.message)
+              done()
+
+          it 'both require_notbefore/require_notonorafter are false - success', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_notonorafter        : false
+              require_notbefore           : false
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              console.error "error received",err if err?
+              assert !err?, 'Response was wrongly rejected'
+              done()
+
+          it 'both require_notbefore/require_notonorafter are not set, default to false - success', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              console.error "error received",err if err?
+              assert !err?, 'Response was wrongly rejected'
+              done()
+
+        describe 'OneTimeUse Tests', ->
+
+          it 'require_onetimeuse is true - returns an error', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_onetimeuse          : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              assert.equal("The Conditions tag is missing, but the OneTimeUse element is Required.", err.message,
+                           "Unexpected error message:" + err.message)
+              done()
+
+          it 'require_onetimeuse is false - success', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              require_onetimeuse          : false
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              console.error "error received",err if err?
+              assert !err?, 'Response was wrongly rejected'
+              done()
+
+          it 'require_onetimeuse is not set, defaults to false - success', (done) ->
+            saml_response        = get_test_file("good_assertion_no_conditions_tag.xml")
+            saml_response_base64 = Buffer.from(saml_response, 'utf8').toString('base64')
+            request_options      =
+              require_session_index       : false
+              ignore_signature            : true
+              allow_unencrypted_assertion : true
+              request_body                :
+                SAMLResponse : saml_response_base64
+
+            @sp.post_assert @idp, request_options, (err, response) ->
+              console.error "error received",err if err?
+              assert !err?, 'Response was wrongly rejected'
+              done()
 
 
   describe 'redirect assert', ->
