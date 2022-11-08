@@ -1,6 +1,6 @@
 {
   "name": "saml2-js",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "license": "Apache-2.0",
@@ -31,12 +31,12 @@
     "nyc": "^15.0.0"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.8.3",
+    "@xmldom/xmldom": "^0.8.6",
     "async": "^3.2.0",
     "debug": "^4.3.0",
     "underscore": "^1.8.0",
-    "xml-crypto": "^3.0.0",
-    "xml-encryption": "^2.0.0",
+    "xml-crypto": "^3.0.1",
+    "xml-encryption": "^3.0.2",
     "xml2js": "^0.4.0",
     "xmlbuilder2": "^2.4.0"
   }
