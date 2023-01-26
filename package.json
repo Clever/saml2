@@ -31,10 +31,10 @@
     "async": "2.6.4",
     "debug": "^2.6.0",
     "underscore": "^1.8.0",
-    "xml-crypto": "^2.0.0",
+    "xml-crypto": "2.1.5",
     "xml-encryption": "2.0.0",
     "xml2js": "^0.4.0",
     "xmlbuilder": "~2.2.0",
-    "xmldom": "^0.6.0"
+    "@xmldom/xmldom": "0.7.7"
   }
 }

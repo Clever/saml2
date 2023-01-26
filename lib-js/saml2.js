@@ -23,7 +23,7 @@ xmlbuilder = require('xmlbuilder');
 
 xmlcrypto = require('xml-crypto');
 
-xmldom = require('xmldom');
+xmldom = require('@xmldom/xmldom');
 
 xmlenc = require('xml-encryption');
 
