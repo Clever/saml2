@@ -7,7 +7,7 @@ fs            = require 'fs'
 saml2         = require "#{__dirname}/../index"
 url           = require 'url'
 util          = require 'util'
-xmldom        = require 'xmldom'
+xmldom        = require '@xmldom/xmldom'
 xmlcrypto     = require 'xml-crypto'
 
 describe 'saml2', ->
