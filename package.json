@@ -1,6 +1,6 @@
 {
   "name": "@progresskinvey/saml2-js",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "main": "index.js",
