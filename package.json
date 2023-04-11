@@ -1,6 +1,6 @@
 {
   "name": "@flourish/saml2-js",
-  "version": "4.1.1",
+  "version": "4.1.2",
   "description": "SAML 2.0 node helpers",
   "author": "Clever",
   "license": "Apache-2.0",
@@ -34,7 +34,7 @@
     "underscore": "^1.8.0",
     "xml-crypto": "^2.0.0",
     "xml-encryption": "^3.0.2",
-    "xml2js": "^0.4.0",
+    "xml2js": "^0.5.0",
     "xmlbuilder2": "^2.4.0"
   }
 }
