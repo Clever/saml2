@@ -96,7 +96,8 @@ create_logout_request = (issuer, name_id, session_index, destination, nameid_for
       '@IssueInstant': (new Date()).toISOString()
       '@Destination': destination
       'saml:Issuer': issuer
-      'saml:NameID': name_id
+      'saml:NameID':
+        '@Value':  name_id
         '@Format': nameid_format or 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
       'samlp:SessionIndex': session_index
   .end()
