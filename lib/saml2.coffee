@@ -335,6 +335,14 @@ get_session_info = (dom, index_required=true) ->
 
   info
 
+get_assertion_id = (dom) ->
+  assertion = dom.getElementsByTagNameNS(XMLNS.SAML, 'Assertion')
+  throw new Error("Expected 1 Assertion; found #{assertion.length}") unless assertion.length is 1
+
+  assertion_id = get_attribute_value assertion[0], 'ID'
+
+  assertion_id
+
 # Takes in an xml @dom of an object containing a SAML Assertion and returns and object containing the attributes
 # contained within the Assertion. It will throw an error if the Assertion is missing or does not appear to be valid.
 parse_assertion_attributes = (dom) ->
@@ -490,6 +498,7 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
         session_info = get_session_info validated_assertion, require_session_index
         user.name_id = get_name_id validated_assertion
         user.session_index = session_info.index
+        user.assertion_id = get_assertion_id validated_assertion
         if session_info.not_on_or_after?
           user.session_not_on_or_after = session_info.not_on_or_after
 
@@ -747,3 +756,4 @@ if process.env.NODE_ENV is "test"
   module.exports.add_namespaces_to_child_assertions = add_namespaces_to_child_assertions
   module.exports.set_option_defaults = set_option_defaults
   module.exports.extract_certificate_data = extract_certificate_data
+  module.exports.get_assertion_id = get_assertion_id
