@@ -2,7 +2,6 @@ _             = require 'underscore'
 async         = require 'async'
 crypto        = require 'crypto'
 debug         = require('debug') 'saml2'
-{parseString} = require 'xml2js'
 url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder2'
@@ -239,10 +238,7 @@ decrypt_assertion = (dom, private_keys, cb) ->
 # This checks the signature of a saml document and returns either array containing the signed data if valid, or null
 # if the signature is invalid. Comparing the result against null is NOT sufficient for signature checks as it doesn't
 # verify the signature is signing the important content, nor is it preventing the parsing of unsigned content.
-check_saml_signature = (_xml, certificate) ->
-  # xml-crypto requires that whitespace is normalized as such:
-  # https://github.com/yaronn/xml-crypto/commit/17f75c538674c0afe29e766b058004ad23bd5136#diff-5dfe38baf287dcf756a17c2dd63483781b53bf4b669e10efdd01e74bcd8e780aL69
-  xml = _xml.replace(/\r\n?/g, '\n')
+check_saml_signature = (xml, certificate) ->
   doc = (new xmldom.DOMParser()).parseFromString(xml)
 
   # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
@@ -354,8 +350,8 @@ parse_assertion_attributes = (dom) ->
     attribute_name = get_attribute_value attribute, 'Name'
     throw new Error("Invalid attribute without name") unless attribute_name?
     attribute_values = attribute.getElementsByTagNameNS(XMLNS.SAML, 'AttributeValue')
-    assertion_attributes[attribute_name] = _(attribute_values).map (attribute_value) ->
-      attribute_value.childNodes[0]?.data or ''
+    assertion_attributes[attribute_name] = _.map(attribute_values, (attribute_value) ->
+      attribute_value.childNodes[0]?.data or '')
   assertion_attributes
 
 # Takes in an object containing SAML Assertion Attributes and returns an object with certain common attributes changed
@@ -382,8 +378,7 @@ pretty_assertion_attributes = (assertion_attributes) ->
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid": "primary_sid"
     "http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname": "windows_account_name"
 
-  _(assertion_attributes)
-    .chain()
+  _.chain(assertion_attributes)
     .pairs()
     .filter(([k, v]) -> (claim_map[k]? and v.length > 0))
     .map(([k, v]) -> [claim_map[k], v[0]])
@@ -541,7 +536,7 @@ module.exports.ServiceProvider =
       @alt_private_keys = [].concat(@alt_private_keys or [])
       @alt_certs = [].concat(@alt_certs or [])
 
-      @shared_options = _(options).pick(
+      @shared_options = _.pick(options,
         "force_authn", "auth_context", "nameid_format", "sign_get_request", "allow_unencrypted_assertion", "audience", "notbefore_skew")
 
     # Returns:
@@ -563,7 +558,7 @@ module.exports.ServiceProvider =
           return cb ex
         delete uri.search # If you provide search and query search overrides query :/
         if options.sign_get_request
-          _(uri.query).extend sign_request(deflated.toString('base64'), @private_key, options.relay_state)
+          _.extend(uri.query, sign_request(deflated.toString('base64'), @private_key, options.relay_state))
         else
           uri.query.SAMLRequest = deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
@@ -617,7 +612,7 @@ module.exports.ServiceProvider =
 
       async.waterfall [
         (cb_wf) ->
-          raw = new Buffer(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
+          raw = Buffer.from(options.request_body.SAMLResponse or options.request_body.SAMLRequest, 'base64')
 
           # Inflate response for redirect requests before parsing it.
           if (options.get_request)
