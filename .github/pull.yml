@@ -1,0 +1,15 @@
+version: "1"
+rules:                    
+  - base: master            
+    upstream: Clever:saml2-js   
+    mergeMethod: merge  
+    mergeUnstable: false   
+    assignees:
+      - darioackermann
+    reviewers:
+      - darioackermann
+    conflictReviewers:
+      - darioackermann
+
+label: ":arrow_heading_down: pull"
+conflictLabel: "merge-conflict"
