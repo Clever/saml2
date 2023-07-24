@@ -2,8 +2,7 @@
 coverage
 node_modules
 lib
-.circleci
-.github
-test
 *.html
+.circleci/
+.github/
 .nvmrc
