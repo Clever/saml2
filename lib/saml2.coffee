@@ -10,6 +10,7 @@ xmldom        = require '@xmldom/xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
 SignedXml     = require('xml-crypto').SignedXml
+xpath         = require('xpath')
 
 XMLNS =
   SAML: 'urn:oasis:names:tc:SAML:2.0:assertion'
@@ -50,10 +51,12 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
   { id, xml }
 
 # Adds an embedded signature to a previously generated AuthnRequest
-sign_authn_request = (xml, private_key, options) ->
-  signer = new SignedXml null, options
-  signer.addReference "//*[local-name(.)='AuthnRequest']", ['http://www.w3.org/2000/09/xmldsig#enveloped-signature','http://www.w3.org/2001/10/xml-exc-c14n#']
-  signer.signingKey = private_key
+sign_authn_request = (xml, private_key, options = {}) ->
+  signer = new SignedXml options
+  signer.addReference {xpath: "//*[local-name(.)='AuthnRequest']", digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1", transforms: ["http://www.w3.org/2001/10/xml-exc-c14n#"]}
+  signer.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n#"
+  signer.privateKey = private_key
+  signer.signatureAlgorithm = options.signatureAlgorithm or "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
   signer.computeSignature xml
   return signer.getSignedXml()
 
@@ -243,10 +246,10 @@ check_saml_signature = (xml, certificate) ->
 
   # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
   # Call documentElement to explicitly start from the root element of the document.
-  signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  signature = xpath.select("./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']", doc.documentElement)
   return null unless signature.length is 1
   sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
+  sig.publicCert = format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0]
   valid = sig.checkSignature xml
   if valid
@@ -264,10 +267,10 @@ get_signed_data = (doc, sig) ->
 
     elem = []
     if uri is ""
-      elem = xmlcrypto.xpath(doc, "//*")
+      elem = xpath.select("//*", doc)
     else
       for idAttribute in ["Id", "ID"]
-        elem = xmlcrypto.xpath(doc, "//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']")
+        elem = xpath.select("//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']", doc)
         if elem.length > 0
           break
 
