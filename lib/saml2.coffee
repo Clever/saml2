@@ -477,6 +477,8 @@ parse_authn_response = (saml_response, sp_private_keys, idp_certificates, allow_
         if audiences?.length > 0
           validAudience = _.find audiences, (audience) ->
             audienceValue = audience.firstChild?.data?.trim()
+            if !audienceValue
+              return true
             !_.isEmpty(audienceValue?.trim()) and (
               (_.isRegExp(sp_audience) and sp_audience.test(audienceValue)) or
               (_.isString(sp_audience) and sp_audience.toLowerCase() == audienceValue.toLowerCase())
