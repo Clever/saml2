@@ -25,7 +25,7 @@ class SAMLError extends Error
 
 # Creates an AuthnRequest and returns it as a string of xml along with the randomly generated ID for the created
 # request.
-create_authn_request = (issuer, assert_endpoint, destination, force_authn, context, nameid_format) ->
+create_authn_request = (issuer, login_hint, assert_endpoint, destination, force_authn, context, nameid_format) ->
   if context?
     context_element = { 'saml:AuthnContextClassRef': context.class_refs, '@Comparison': context.comparison }
 
@@ -41,7 +41,10 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
       '@AssertionConsumerServiceURL': assert_endpoint
       '@ProtocolBinding': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
       '@ForceAuthn': force_authn
-      'saml:Issuer': issuer
+      'saml:Issuer': issuer,
+      'saml:Subject': {
+        'saml:NameID': login_hint
+      },
       NameIDPolicy:
         '@Format': nameid_format or 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
         '@AllowCreate': 'true'
@@ -530,7 +533,7 @@ module.exports.ServiceProvider =
     #
     # Rest of options can be set/overwritten by the identity provider and/or at function call.
     constructor: (options) ->
-      {@entity_id, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
+      {@entity_id, @login_hint, @private_key, @certificate, @assert_endpoint, @alt_private_keys, @alt_certs} = options
 
       options.audience ?= @entity_id
       options.notbefore_skew ?= 1
@@ -551,7 +554,7 @@ module.exports.ServiceProvider =
     create_login_request_url: (identity_provider, options, cb) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @login_hint, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       zlib.deflateRaw xml, (err, deflated) =>
         return cb err if err?
         try
@@ -574,7 +577,7 @@ module.exports.ServiceProvider =
     create_authn_request_xml: (identity_provider, options) ->
       options = set_option_defaults options, identity_provider.shared_options, @shared_options
 
-      { id, xml } = create_authn_request @entity_id, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
+      { id, xml } = create_authn_request @entity_id, @login_hint, @assert_endpoint, identity_provider.sso_login_url, options.force_authn, options.auth_context, options.nameid_format
       return sign_authn_request(xml, @private_key, options)
 
     # Returns:
