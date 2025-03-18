@@ -56,6 +56,7 @@ An object that can contain the below options.  All options are strings, unless s
 - `nameid_format` - Format for Name ID.  This can also be configured on a per-method basis.
 - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
 - `allow_unencrypted_assertion` - (Boolean) - If true, allows unencrypted assertions.  This can also be configured on the [IdP](#IdentityProvider) or on a per-method basis.
+- `login_hint` - (String) - The email used to populate automatically the login field. It's equivalent to the login_hint of open-id. 
 
 #### Returns the following functions
 - [`create_login_request_url(IdP, options, cb)`](#create_login_request_url) - Get a URL to initiate a login.
@@ -77,6 +78,7 @@ An object that can contain the below options.  All options are strings, unless s
     auth_context: { comparison: "exact", class_refs: ["urn:oasis:names:tc:SAML:1.0:am:password"] },
     nameid_format: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
     sign_get_request: false,
+    login_hint: 'me@mycompany.com',
     allow_unencrypted_assertion: true
   }
 
@@ -104,6 +106,7 @@ Takes the following arguments:
   - `nameid_format` - Format for Name ID.  This can also be configured on the [SP](#ServiceProvider).
   - `force_authn`- (Boolean) - If true, forces re-authentication of users even if the user has a SSO session with the [IdP](#IdentityProvider).  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
   - `sign_get_request` - (Boolean) - If true, signs the request.  This can also be configured on the [IdP](#IdentityProvider) or [SP](#ServiceProvider).
+  - `login_hint` - (String) - The email used to populate automatically the login field. It's equivalent to the login_hint of open-id. 
 - `cb(error, login_url, request_id)` - Callback called with the login URL and ID of the request.
 
 
