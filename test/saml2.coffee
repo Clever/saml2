@@ -198,6 +198,10 @@ describe 'saml2', ->
         result = saml2.check_saml_signature(get_test_file("good_response_twice_signed_dsig_ns_at_top.xml"), get_test_file("test.crt"))
         assert.notEqual null, result
 
+      it 'correctly ignores commented-out digest', ->
+        result = saml2.check_saml_signature(get_test_file("good_assertion_commented_out_digest.xml"), get_test_file("test.crt"))
+        assert.deepEqual result, [get_test_file("good_assertion_signed_data.xml")]
+
     describe 'check_status_success', =>
       it 'accepts a valid success status', =>
         assert saml2.check_status_success(@good_response_dom), "Did not get 'true' for valid response."

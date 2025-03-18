@@ -259,6 +259,8 @@ check_saml_signature = (xml, certificate) ->
 get_signed_data = (doc, sig) ->
   _.map sig.references, (ref) ->
     uri = ref.uri
+    if not uri?
+      uri = ''
     if uri[0] is '#'
       uri = uri.substring(1)
 
