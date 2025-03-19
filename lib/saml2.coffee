@@ -560,7 +560,9 @@ module.exports.ServiceProvider =
           return cb ex
         delete uri.search # If you provide search and query search overrides query :/
         if options.sign_get_request
-          _.extend(uri.query, sign_request(deflated.toString('base64'), @private_key, options.relay_state))
+          # adding this try/catch to stop async uncaught errors from passing through
+          try _.extend(uri.query, sign_request(deflated.toString('base64'), @private_key, options.relay_state))
+          catch error then return cb(error)
         else
           uri.query.SAMLRequest = deflated.toString 'base64'
           uri.query.RelayState = options.relay_state if options.relay_state?
