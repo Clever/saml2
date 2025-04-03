@@ -6,6 +6,7 @@ url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder2'
 xmlcrypto     = require 'xml-crypto'
+SignedXmlPatch     = require('xml-crypto-patch').SignedXml;
 xmldom        = require '@xmldom/xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
@@ -245,18 +246,32 @@ check_saml_signature = (xml, certificate) ->
   # Call documentElement to explicitly start from the root element of the document.
   signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
-  sig = new xmlcrypto.SignedXml()
-  sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
+  sig = new SignedXmlPatch(
+    {
+      publicCert: format_pem(certificate, 'CERTIFICATE')
+    }
+  )
+  # sig.keyInfoProvider = getKey: -> format_pem(certificate, 'CERTIFICATE')
   sig.loadSignature signature[0]
-  valid = sig.checkSignature xml
-  if valid
-    return get_signed_data(doc, sig)
-  else
-    return null
+  try
+    valid = sig.checkSignature xml
+    if valid
+      return get_signed_data(doc, sig)
+    else
+      return null
+  catch e
+    # temporary hack
+    if (e.message.indexOf("invalid signature") != -1)
+      return null; # returns null for incorrect signature
+    else
+      throw e; # throw back the error
+
 
 # Gets the data that is actually signed according to xml-crypto. This function should mirror the way xml-crypto finds
 # elements for security reasons.
+# deprecate
 get_signed_data = (doc, sig) ->
+  return sig.signedReferences; # use new API
   _.map sig.references, (ref) ->
     uri = ref.uri
     if not uri?
