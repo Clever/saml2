@@ -57,9 +57,11 @@ sign_authn_request = (xml, private_key, options) ->
     transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#']
     digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256"
   })
-  signer.signingKey = private_key
-  signer.computeSignature xml
+  signer.privateKey = private_key
   signer.canonicalizationAlgorithm = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+  signer.signatureAlgorithm = options?.signatureAlgorithm || 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+
+  signer.computeSignature xml
 
 
   return signer.getSignedXml()

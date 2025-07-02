@@ -1296,7 +1296,7 @@ describe 'saml2', ->
       xml = sp.create_authn_request_xml(idp)
       dom = (new xmldom.DOMParser()).parseFromString xml
       method = dom.getElementsByTagName('SignatureMethod')[0]
-      assert.equal method.attributes[0].value, 'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+      assert.equal method.attributes[0].value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
 
     it 'can create a signed AuthnRequest xml document with sha256 signature', () ->
       sp_options =
