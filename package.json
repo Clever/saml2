@@ -35,8 +35,7 @@
     "async": "^3.2.0",
     "debug": "^4.3.0",
     "underscore": "^1.8.0",
-    "xml-crypto": "^3.2.1",
-    "xml-crypto-patch": "securesaml/xml-crypto#v6-minor",
+    "xml-crypto": "^6.1.2",
     "xml-encryption": "^3.0.2",
     "xmlbuilder2": "^2.4.0"
   }

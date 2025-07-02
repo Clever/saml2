@@ -6,7 +6,6 @@ url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder2'
 xmlcrypto     = require 'xml-crypto'
-SignedXmlPatch     = require('xml-crypto-patch').SignedXml;
 xmldom        = require '@xmldom/xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
@@ -246,7 +245,7 @@ check_saml_signature = (xml, certificate) ->
   # Call documentElement to explicitly start from the root element of the document.
   signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
   return null unless signature.length is 1
-  sig = new SignedXmlPatch(
+  sig = new SignedXml(
     {
       publicCert: format_pem(certificate, 'CERTIFICATE')
     }
@@ -271,27 +270,7 @@ check_saml_signature = (xml, certificate) ->
 # elements for security reasons.
 # deprecate
 get_signed_data = (doc, sig) ->
-  return sig.signedReferences; # use new API
-  _.map sig.references, (ref) ->
-    uri = ref.uri
-    if not uri?
-      uri = ''
-    if uri[0] is '#'
-      uri = uri.substring(1)
-
-    elem = []
-    if uri is ""
-      elem = xmlcrypto.xpath(doc, "//*")
-    else
-      for idAttribute in ["Id", "ID"]
-        elem = xmlcrypto.xpath(doc, "//*[@*[local-name(.)='" + idAttribute + "']='" + uri + "']")
-        if elem.length > 0
-          break
-
-    unless elem.length > 0
-      throw new Error("Invalid signature; must be a reference to '#{ref.uri}'")
-    sig.getCanonXml ref.transforms, elem[0], { inclusiveNamespacesPrefixList: ref.inclusiveNamespacesPrefixList }
-
+  return sig.getSignedReferences(); # use new API
 # Takes in an xml @dom of an object containing a SAML Response and returns an object containing the Destination and
 # InResponseTo attributes of the Response if present. It will throw an error if the Response is missing or does not
 # appear to be valid.
