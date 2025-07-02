@@ -5,7 +5,7 @@ debug         = require('debug') 'saml2'
 url           = require 'url'
 util          = require 'util'
 xmlbuilder    = require 'xmlbuilder2'
-xmlcrypto     = require 'xml-crypto'
+xpath     = require 'xpath'
 xmldom        = require '@xmldom/xmldom'
 xmlenc        = require 'xml-encryption'
 zlib          = require 'zlib'
@@ -51,10 +51,17 @@ create_authn_request = (issuer, assert_endpoint, destination, force_authn, conte
 
 # Adds an embedded signature to a previously generated AuthnRequest
 sign_authn_request = (xml, private_key, options) ->
-  signer = new SignedXml null, options
-  signer.addReference "//*[local-name(.)='AuthnRequest']", ['http://www.w3.org/2000/09/xmldsig#enveloped-signature','http://www.w3.org/2001/10/xml-exc-c14n#']
+  signer = new SignedXml options
+  signer.addReference({
+    xpath: "//*[local-name(.)='AuthnRequest']",
+    transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#']
+    digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256"
+  })
   signer.signingKey = private_key
   signer.computeSignature xml
+  signer.canonicalizationAlgorithm = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+
+
   return signer.getSignedXml()
 
 # Creates metadata and returns it as a string of XML. The metadata has one POST assertion endpoint.
@@ -243,7 +250,7 @@ check_saml_signature = (xml, certificate) ->
 
   # xpath failed to capture <ds:Signature> nodes of direct descendents of the root.
   # Call documentElement to explicitly start from the root element of the document.
-  signature = xmlcrypto.xpath(doc.documentElement, "./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']")
+  signature = xpath.select("./*[local-name(.)='Signature' and namespace-uri(.)='http://www.w3.org/2000/09/xmldsig#']", doc.documentElement)
   return null unless signature.length is 1
   sig = new SignedXml(
     {
