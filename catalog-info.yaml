@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: saml2
+  description: Node module to abstract away the complexities of the SAML protocol behind an easy to use interface.
+  owner: unknown
+spec:
+  type: unknown
+  lifecycle: production
+  owner: unknown
+  system: Clever

@@ -60,6 +60,13 @@ jobs:
       - clone-ci-scripts
       - run: if [ "${CIRCLE_BRANCH}" == "master" ]; then ../ci-scripts/circleci/npm-publish $NPM_TOKEN .; fi;
 
+  publish_utility:
+    executor: node-v12
+    steps:
+      - attach_workspace:
+          at: ~/Clever
+      - clone-ci-scripts
+      - run: ../ci-scripts/circleci/catalog-sync $CATAPULT_URL $CATAPULT_USER $CATAPULT_PASS saml2 utility
 workflows:
   version: 2
   build_test_publish:
@@ -70,6 +77,10 @@ workflows:
             parameters:
               node-version: ["14", "16", "18", "20", "22", "24", "latest"]
       - publish:
+          requires:
+            - build
+            - test
+      - publish_utility:
           requires:
             - build
             - test
