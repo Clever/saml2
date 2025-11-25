@@ -270,6 +270,15 @@ describe 'saml2', ->
         name_id = saml2.get_name_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
         assert.equal name_id, 'tstudent'
 
+    describe 'get_assertion_id', ->
+      it 'gets the correct assertionId', ->
+        assertion_id = saml2.get_assertion_id dom_from_test_file('good_assertion.xml')
+        assert.equal assertion_id, '_3'
+
+      it 'parses assertions with explicit namespaces', ->
+        assertion_id = saml2.get_assertion_id dom_from_test_file('good_assertion_explicit_namespaces.xml')
+        assert.equal assertion_id, '_3'
+
     describe 'get_session_info', ->
       it 'gets the correct session index', ->
         info = saml2.get_session_info dom_from_test_file('good_assertion.xml')
@@ -405,6 +414,7 @@ describe 'saml2', ->
           user:
             name_id: 'tstudent'
             session_index: '_3'
+            assertion_id: '_3'
             given_name: 'Test',
             email: 'tstudent@example.com',
             ppid: 'tstudent',
@@ -453,6 +463,7 @@ describe 'saml2', ->
           user:
             name_id: 'tstudent',
             session_index: '_3'
+            assertion_id: '_3'
             given_name: 'Test'
             attributes:
               'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ]
@@ -561,6 +572,7 @@ describe 'saml2', ->
           user:
             name_id: undefined
             session_index: '_4'
+            assertion_id: '_3'
             session_not_on_or_after: '2016-02-11T21:12:09Z'
             attributes: {}
 
@@ -632,6 +644,7 @@ describe 'saml2', ->
             user:
               name_id: undefined
               session_index: null
+              assertion_id: '_3'
               session_not_on_or_after: '2016-02-11T21:12:09Z'
               attributes: {}
 
@@ -1002,6 +1015,7 @@ describe 'saml2', ->
           user:
             name_id: 'tstudent'
             session_index: '_3'
+            assertion_id: '_3'
             given_name: 'Test',
             email: 'tstudent@example.com',
             ppid: 'tstudent',
