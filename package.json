@@ -37,7 +37,7 @@
     "underscore": "^1.8.0",
     "xml-crypto": "^6.1.2",
     "xml-encryption": "^3.0.2",
-    "xmlbuilder2": "^2.4.0",
+    "xmlbuilder2": "^4.0.1",
     "xpath": "^0.0.34"
   }
 }
