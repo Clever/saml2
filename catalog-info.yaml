@@ -3,9 +3,9 @@ kind: Component
 metadata:
   name: saml2
   description: Node module to abstract away the complexities of the SAML protocol behind an easy to use interface.
-  owner: unknown
+  owner: eng-auth
 spec:
   type: unknown
   lifecycle: production
-  owner: unknown
+  owner: eng-auth
   system: Clever
