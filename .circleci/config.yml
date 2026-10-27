@@ -75,7 +75,7 @@ workflows:
       - test:
           matrix:
             parameters:
-              node-version: ["14", "16", "18", "20", "22", "24", "25"]
+              node-version: ["14", "16", "18", "20", "22", "24"]
       - publish:
           requires:
             - build
