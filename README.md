@@ -132,6 +132,7 @@ Example of the SAML assert response returned:
     user:
      { name_id: 'nameid',
        session_index: '_abc-3',
+       assertion_id: '_123',
        attributes:
         { 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': [ 'Test' ] } } }
   ```
